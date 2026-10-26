@@ -1,0 +1,20 @@
+{
+  "productUrl": "https://www.sihoo.tw/這裡貼你要的那張椅子的商品頁網址",
+  "loginUrl": "https://www.sihoo.tw/",
+  "cartUrl": "https://www.sihoo.tw/cart",
+  "saleStart": "2026-11-11T00:00:00+08:00",
+  "preloadSeconds": 60,
+  "refreshIntervalMs": 2000,
+  "giveUpAfterMinutes": 30,
+  "variantOptions": ["黑色"],
+  "quantity": 1,
+  "couponCode": "",
+  "chromeChannel": "",
+  "selectors": {
+    "buyNow": ["立即購買", "直接購買", "馬上買"],
+    "addToCart": ["加入購物車", "放入購物車"],
+    "soldOut": ["css=button:has-text('已售完')", "css=button:has-text('尚未開賣')", "css=button:has-text('即將開賣')"],
+    "quantityInput": ["css=input[name='quantity']", "css=input[type='number']"],
+    "checkout": ["前往結帳", "去結帳", "結帳"]
+  }
+}

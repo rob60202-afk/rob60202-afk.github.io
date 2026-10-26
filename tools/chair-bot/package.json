@@ -1,0 +1,15 @@
+{
+  "name": "chair-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sihoo 椅子開賣搶購小幫手（自動加入購物車並停在結帳頁，付款由本人確認）",
+  "scripts": {
+    "login": "node bot.js login",
+    "check": "node bot.js check",
+    "start": "node bot.js run",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
