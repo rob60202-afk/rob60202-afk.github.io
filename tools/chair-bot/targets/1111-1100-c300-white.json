@@ -4,7 +4,7 @@
   "productUrl": "",
   "categoryUrl": "https://www.sihoo.tw/category/double11",
   "loginUrl": "https://www.sihoo.tw/",
-  "cartUrl": "https://www.sihoo.tw/cart",
+  "cartUrl": "",
   "preloadSeconds": 180,
   "refreshIntervalMs": 1500,
   "giveUpAfterMinutes": 5,
@@ -27,10 +27,9 @@
       "exact=放入購物車"
     ],
     "soldOut": [
+      "開始販售",
       "css=button:has-text('已售完')",
-      "css=button:has-text('售完')",
-      "css=button:has-text('開始販售')",
-      "css=button:has-text('即將開賣')"
+      "css=button:has-text('售完')"
     ],
     "quantityInput": [
       "css=input[name='quantity']",
@@ -39,7 +38,8 @@
     "checkout": [
       "前往結帳",
       "去結帳",
-      "立即結帳"
+      "exact=立即結帳",
+      "exact=結帳"
     ],
     "checkoutForm": [
       "付款方式與送貨方式",
@@ -59,9 +59,11 @@
       "感謝您的訂購",
       "訂單編號"
     ],
-    "cartHasItems": [
-      "【西昊】",
-      "購物車商品"
-    ]
+    "cartIcon": [
+      "css=a[href*='cart']",
+      "css=[class*='cart' i] svg",
+      "css=[class*='cart' i]"
+    ],
+    "cartItemText": "【西昊】"
   }
 }

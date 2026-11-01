@@ -113,15 +113,15 @@ async function cmdCheck(cfg) {
   for (const name of ['buyNow', 'addToCart', 'soldOut', 'quantityInput']) {
     const list = s[name] || [];
     const found = await firstVisible(page, list, 1500);
-    log(`${found ? '✔' : '✘'} ${name}`, found ? `→ "${(await found.innerText().catch(() => '')).trim().slice(0, 30)}"` : '（此頁找不到，若屬於購物車/結帳頁則正常）');
+    log(`${found ? '✔' : '✘'} ${name}`, found ? `→ "${(await found.innerText().catch(() => '')).trim().slice(0, 30)}"` : '（開賣前找不到是正常的）');
   }
   for (const opt of cfg.variantOptions || []) {
     const found = await firstVisible(page, [opt], 1500);
     log(`${found ? '✔' : '✘'} 規格「${opt}」`);
   }
-  if (cfg.cartUrl) {
+  {
     const state = await cartState(page, cfg);
-    log(`購物車：${{ empty: '✔ 空的', items: '⚠ 目前有商品，開賣前請清空（否則不會自動送出）', error: `✘ 購物車網址打不開（${cfg.cartUrl}），請確認 cartUrl` }[state]}`);
+    log(`購物車：${{ empty: '✔ 空的', items: '⚠ 目前有商品，開賣前請清空（否則不會自動送出）', error: `✘ 購物車網址打不開（${cfg.cartUrl}），請確認 cartUrl`, unknown: '請自己確認是空的（結帳頁另有商品核對保護）' }[state]}`);
   }
   log('檢查完畢，瀏覽器保留讓你對照，關掉即可結束。');
   await new Promise((r) => ctx.on('close', r));
@@ -186,15 +186,24 @@ async function fillCheckout(page, cfg) {
   }
   const agree = page.getByRole('checkbox', { name: /同意|閱讀/ }).first();
   if (await agree.isVisible().catch(() => false)) await agree.check().catch(() => {});
-  if (cfg.productName && !new RegExp(cfg.productName).test(await page.locator('body').innerText())) {
-    log('⚠ 結帳頁沒看到目標商品');
-    ok = false;
+  // 結帳頁上每一個商品（含「【西昊】」的文字，連同所在那一行）都必須是目標商品，避免連其他商品一起下單
+  if (cfg.productName) {
+    const re = new RegExp(cfg.productName);
+    const items = await page
+      .getByText(cfg.selectors.cartItemText || '【西昊】')
+      .filter({ visible: true })
+      .evaluateAll((els) => els.map((el) => (el.parentElement || el).innerText.replace(/\s+/g, ' ').trim()));
+    const others = items.filter((t) => !re.test(t));
+    if (!items.length) log('⚠ 結帳頁沒看到目標商品');
+    if (others.length) log(`⚠ 結帳頁有其他商品：${others[0].slice(0, 40)}`);
+    if (!items.length || others.length) ok = false;
   }
   return ok;
 }
 
 // 回傳 'empty'、'items' 或 'error'（購物車網址打不開，無法確認）
 async function cartState(page, cfg) {
+  if (!cfg.cartUrl) return 'unknown';
   const res = await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' }).catch(() => null);
   if (!res || res.status() >= 400 || /錯誤|error|not found/i.test(await page.title())) return 'error';
   return (await firstVisible(page, cfg.selectors.cartHasItems || [], 3000)) ? 'items' : 'empty';
@@ -214,7 +223,7 @@ async function cmdRun(cfg) {
   let autoSubmit = Boolean(cfg.autoSubmit);
   log(`模式：${autoSubmit ? '自動送出訂單' : '停在結帳頁，由你按送出'}`);
   const state = autoSubmit ? await cartState(page, cfg) : 'empty';
-  if (state !== 'empty') {
+  if (state === 'items' || state === 'error') {
     autoSubmit = false;
     log(state === 'items'
       ? '⚠ 購物車裡已經有商品，為避免一起下單，本次改為「不自動送出」。要自動送出請先清空購物車再重跑。'
@@ -254,12 +263,22 @@ async function cmdRun(cfg) {
   await Promise.race([added, navigated]);
   if (!isCartUrl.test(page.url()) && cfg.cartUrl) await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' });
 
-  // 有的商店購物車和結帳在同一頁（看得到付款方式），有的要再按「前往結帳」
-  if (!(await firstVisible(page, s.checkoutForm, 3000))) {
-    const checkout = await firstVisible(page, s.checkout, 5000);
+  // 可能已經在結帳頁（看得到付款方式），或是跳出購物車側欄要再按「結帳」；側欄沒自己打開就點購物車圖示
+  await firstVisible(page, s.checkoutForm.concat(s.checkout), 5000);
+  if (!(await firstVisible(page, s.checkoutForm))) {
+    let checkout = await firstVisible(page, s.checkout);
+    if (!checkout && s.cartIcon) {
+      const icon = await firstVisible(page, s.cartIcon, 1000);
+      if (icon) {
+        await icon.click();
+        log('已打開購物車');
+        checkout = await firstVisible(page, s.checkout, 3000);
+      }
+    }
     if (checkout) {
       await checkout.click();
       log('已前往結帳頁');
+      await firstVisible(page, s.checkoutForm, 10000);
     }
   }
 
@@ -277,7 +296,7 @@ async function cmdRun(cfg) {
     }
     log('⚠ 找不到送出訂單按鈕');
   } else if (autoSubmit) {
-    log('⚠ 結帳頁有項目沒選到，為安全起見不自動送出');
+    log('⚠ 結帳頁核對沒通過（見上方），為安全起見不自動送出');
   }
 
   await beep(page);
