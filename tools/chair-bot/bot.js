@@ -106,13 +106,17 @@ async function cmdCheck(cfg) {
   await page.goto(await resolveProductUrl(page, cfg), { waitUntil: 'domcontentloaded' });
   await sleep(2000);
   const s = cfg.selectors;
-  for (const [name, list] of Object.entries(s)) {
+  for (const name of ['buyNow', 'addToCart', 'soldOut', 'quantityInput']) {
+    const list = s[name] || [];
     const found = await firstVisible(page, list, 1500);
     log(`${found ? '✔' : '✘'} ${name}`, found ? `→ "${(await found.innerText().catch(() => '')).trim().slice(0, 30)}"` : '（此頁找不到，若屬於購物車/結帳頁則正常）');
   }
   for (const opt of cfg.variantOptions || []) {
     const found = await firstVisible(page, [opt], 1500);
     log(`${found ? '✔' : '✘'} 規格「${opt}」`);
+  }
+  if (cfg.cartUrl) {
+    log(`購物車：${(await cartHasItems(page, cfg)) ? '⚠ 目前有商品，開賣前請清空（否則不會自動送出）' : '✔ 空的'}`);
   }
   log('檢查完畢，瀏覽器保留讓你對照，關掉即可結束。');
   await new Promise((r) => ctx.on('close', r));
@@ -151,6 +155,34 @@ async function resolveProductUrl(page, cfg) {
   return cfg.productUrl;
 }
 
+// 結帳頁：選付款方式、送貨方式、勾同意條款，並核對目標商品在頁面上；全部成功才回傳 true
+async function fillCheckout(page, cfg) {
+  let ok = true;
+  for (const [label, text] of [['付款方式', cfg.paymentMethod], ['送貨方式', cfg.shippingMethod]]) {
+    if (!text) continue;
+    const el = await firstVisible(page, [text], 5000);
+    if (el) {
+      await el.click();
+      log(`已選${label}：${text}`);
+    } else {
+      log(`⚠ 找不到${label}「${text}」`);
+      ok = false;
+    }
+  }
+  const agree = page.getByRole('checkbox', { name: /同意|閱讀/ }).first();
+  if (await agree.isVisible().catch(() => false)) await agree.check().catch(() => {});
+  if (cfg.productName && !new RegExp(cfg.productName).test(await page.locator('body').innerText())) {
+    log('⚠ 結帳頁沒看到目標商品');
+    ok = false;
+  }
+  return ok;
+}
+
+async function cartHasItems(page, cfg) {
+  await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' });
+  return Boolean(await firstVisible(page, cfg.selectors.cartHasItems || [], 3000));
+}
+
 async function cmdRun(cfg) {
   const { ctx, page } = await openBrowser(cfg);
   const s = cfg.selectors;
@@ -162,6 +194,12 @@ async function cmdRun(cfg) {
 
   // 提前打開頁面暖機（DNS、登入 cookie、圖片快取）
   await waitUntil(startMs - (cfg.preloadSeconds || 60) * 1000, offset, '預熱');
+  let autoSubmit = Boolean(cfg.autoSubmit);
+  log(`模式：${autoSubmit ? '自動送出訂單' : '停在結帳頁，由你按送出'}`);
+  if (autoSubmit && (await cartHasItems(page, cfg))) {
+    autoSubmit = false;
+    log('⚠ 購物車裡已經有商品，為避免一起下單，本次改為「不自動送出」。要自動送出請先清空購物車再重跑。');
+  }
   await page.goto(await resolveProductUrl(page, cfg), { waitUntil: 'domcontentloaded' });
   log('已開啟商品頁，等待開賣…');
   await waitUntil(startMs, offset, '開賣');
@@ -185,24 +223,45 @@ async function cmdRun(cfg) {
   }
 
   const buy = (await firstVisible(page, s.buyNow, 500)) || (await firstVisible(page, s.addToCart, 500));
+  // 「加入購物車」通常只送出一個背景請求並跳小視窗：等到網站回覆（或頁面自己跳轉）就前往購物車，不乾等
+  const isCartUrl = /cart|checkout|order/i;
+  const added = page
+    .waitForResponse((r) => r.request().method() !== 'GET' && ['xhr', 'fetch'].includes(r.request().resourceType()), { timeout: 3000 })
+    .catch(() => null);
+  const navigated = page.waitForURL(isCartUrl, { timeout: 3000 }).catch(() => null);
   await buy.click();
   log('已點擊購買/加入購物車');
+  await Promise.race([added, navigated]);
+  if (!isCartUrl.test(page.url()) && cfg.cartUrl) await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' });
 
-  // 「加入購物車」通常只會跳小視窗，直接前往購物車頁
-  if (!(await page.waitForURL(/cart|checkout|order/i, { timeout: 3000 }).then(() => true).catch(() => false))) {
-    if (cfg.cartUrl) await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' });
+  // 有的商店購物車和結帳在同一頁（看得到付款方式），有的要再按「前往結帳」
+  if (!(await firstVisible(page, s.checkoutForm, 3000))) {
+    const checkout = await firstVisible(page, s.checkout, 5000);
+    if (checkout) {
+      await checkout.click();
+      log('已前往結帳頁');
+    }
   }
 
-  const checkout = await firstVisible(page, s.checkout, 8000);
-  if (checkout) {
-    await checkout.click();
-    log('已前往結帳頁');
-  } else {
-    log('沒找到結帳按鈕，請手動接手');
+  const ready = await fillCheckout(page, cfg);
+  if (autoSubmit && ready) {
+    const submit = await firstVisible(page, s.submitOrder, 3000);
+    if (submit) {
+      await submit.click();
+      log('已按下送出訂單，確認結果中…');
+      const done = await firstVisible(page, s.orderDone, 15000);
+      await beep(page);
+      log(done ? '★ 訂單已成立！請到會員中心確認訂單內容。' : '★ 已按送出，但沒看到「訂單成立」字樣，請立刻看瀏覽器確認。');
+      await new Promise((r) => ctx.on('close', r));
+      return;
+    }
+    log('⚠ 找不到送出訂單按鈕');
+  } else if (autoSubmit) {
+    log('⚠ 結帳頁有項目沒選到，為安全起見不自動送出');
   }
 
   await beep(page);
-  log('★ 已停在結帳流程，請立刻在瀏覽器確認商品、規格、金額、折扣碼，並手動完成付款。');
+  log('★ 已停在結帳頁，請立刻確認商品、金額、付款方式，然後自己按送出訂單。');
   if (cfg.couponCode) log(`提醒：折扣碼 ${cfg.couponCode}`);
   await new Promise((r) => ctx.on('close', r));
 }
@@ -210,6 +269,7 @@ async function cmdRun(cfg) {
 (async () => {
   const cmd = process.argv[2] || 'run';
   const cfg = loadConfig();
+  if (process.argv.includes('--submit')) cfg.autoSubmit = true;
   const fn = { login: cmdLogin, check: cmdCheck, run: cmdRun }[cmd];
   if (!fn) {
     console.error('用法：node bot.js [login|check|run]');

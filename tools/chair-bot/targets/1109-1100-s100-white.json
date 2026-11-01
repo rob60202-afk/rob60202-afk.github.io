@@ -1,5 +1,5 @@
 {
-  "productName": "S100.*沐雲白",
+  "productName": "S100[\\s\\S]*沐雲白",
   "saleStart": "2026-11-09T11:00:00+08:00",
   "productUrl": "",
   "categoryUrl": "https://www.sihoo.tw/category/double11",
@@ -11,6 +11,9 @@
   "variantOptions": [],
   "quantity": 1,
   "couponCode": "",
+  "paymentMethod": "貨到付款",
+  "shippingMethod": "新竹物流",
+  "autoSubmit": false,
   "chromeChannel": "",
   "selectors": {
     "buyNow": [
@@ -35,7 +38,29 @@
     "checkout": [
       "前往結帳",
       "去結帳",
-      "結帳"
+      "立即結帳"
+    ],
+    "checkoutForm": [
+      "付款方式與送貨方式",
+      "選擇付款方式"
+    ],
+    "submitOrder": [
+      "送出訂單",
+      "確認下單",
+      "提交訂單",
+      "確認結帳",
+      "完成訂單",
+      "css=button:text-is('結帳')"
+    ],
+    "orderDone": [
+      "訂單成立",
+      "訂單已成立",
+      "感謝您的訂購",
+      "訂單編號"
+    ],
+    "cartHasItems": [
+      "【西昊】",
+      "購物車商品"
     ]
   }
 }

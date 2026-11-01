@@ -6,15 +6,60 @@
   "preloadSeconds": 60,
   "refreshIntervalMs": 2000,
   "giveUpAfterMinutes": 30,
-  "variantOptions": ["黑色"],
+  "variantOptions": [
+    "黑色"
+  ],
   "quantity": 1,
   "couponCode": "",
+  "paymentMethod": "貨到付款",
+  "shippingMethod": "新竹物流",
+  "autoSubmit": false,
   "chromeChannel": "",
   "selectors": {
-    "buyNow": ["立即購買", "直接購買", "馬上買"],
-    "addToCart": ["加入購物車", "放入購物車"],
-    "soldOut": ["css=button:has-text('已售完')", "css=button:has-text('尚未開賣')", "css=button:has-text('即將開賣')"],
-    "quantityInput": ["css=input[name='quantity']", "css=input[type='number']"],
-    "checkout": ["前往結帳", "去結帳", "結帳"]
+    "buyNow": [
+      "立即購買",
+      "直接購買",
+      "馬上買"
+    ],
+    "addToCart": [
+      "加入購物車",
+      "放入購物車"
+    ],
+    "soldOut": [
+      "css=button:has-text('已售完')",
+      "css=button:has-text('尚未開賣')",
+      "css=button:has-text('即將開賣')"
+    ],
+    "quantityInput": [
+      "css=input[name='quantity']",
+      "css=input[type='number']"
+    ],
+    "checkout": [
+      "前往結帳",
+      "去結帳",
+      "立即結帳"
+    ],
+    "checkoutForm": [
+      "付款方式與送貨方式",
+      "選擇付款方式"
+    ],
+    "submitOrder": [
+      "送出訂單",
+      "確認下單",
+      "提交訂單",
+      "確認結帳",
+      "完成訂單",
+      "css=button:text-is('結帳')"
+    ],
+    "orderDone": [
+      "訂單成立",
+      "訂單已成立",
+      "感謝您的訂購",
+      "訂單編號"
+    ],
+    "cartHasItems": [
+      "【西昊】",
+      "購物車商品"
+    ]
   }
 }

@@ -39,7 +39,12 @@ async function ask(question) {
     const cmd = ACTIONS[(await ask('請輸入 L / C / R 後按 Enter：')).toUpperCase()];
     if (!cmd) continue;
 
-    spawnSync(process.execPath, [path.join(__dirname, 'bot.js'), cmd, path.join(__dirname, 'targets', `${target[1]}.json`)], { stdio: 'inherit' });
+    const args = [path.join(__dirname, 'bot.js'), cmd, path.join(__dirname, 'targets', `${target[1]}.json`)];
+    if (cmd === 'run') {
+      console.log('\n到了結帳頁要「自動送出訂單」嗎？（貨到付款，不經信用卡；購物車有其他商品時會自動取消）');
+      if ((await ask('輸入 Y = 自動送出，N = 停在結帳頁由我按：')).toUpperCase() === 'Y') args.push('--submit');
+    }
+    spawnSync(process.execPath, args, { stdio: 'inherit' });
     await ask('\n按 Enter 回到選單');
   }
 })();
