@@ -1,0 +1,41 @@
+{
+  "productName": "B100.*岩霧灰",
+  "saleStart": "2026-11-02T11:00:00+08:00",
+  "productUrl": "",
+  "categoryUrl": "https://www.sihoo.tw/category/double11",
+  "loginUrl": "https://www.sihoo.tw/",
+  "cartUrl": "https://www.sihoo.tw/cart",
+  "preloadSeconds": 180,
+  "refreshIntervalMs": 1500,
+  "giveUpAfterMinutes": 5,
+  "variantOptions": [],
+  "quantity": 1,
+  "couponCode": "",
+  "chromeChannel": "",
+  "selectors": {
+    "buyNow": [
+      "立即搶購",
+      "立即購買",
+      "直接購買"
+    ],
+    "addToCart": [
+      "加入購物車",
+      "放入購物車"
+    ],
+    "soldOut": [
+      "css=button:has-text('已售完')",
+      "css=button:has-text('售完')",
+      "css=button:has-text('開始販售')",
+      "css=button:has-text('即將開賣')"
+    ],
+    "quantityInput": [
+      "css=input[name='quantity']",
+      "css=input[type='number']"
+    ],
+    "checkout": [
+      "前往結帳",
+      "去結帳",
+      "結帳"
+    ]
+  }
+}

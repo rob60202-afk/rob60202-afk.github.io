@@ -2,14 +2,15 @@
 // 椅子搶購小幫手：開賣前預熱 → 開賣即刷新 → 選規格 → 加入購物車 → 進結帳頁 → 停下來讓你付款。
 // 用法：
 //   node bot.js login   第一次先登入會員（登入狀態會存在 ./profile，不存密碼）
-//   node bot.js run     正式搶購
+//   node bot.js run     正式搶購（可加設定檔路徑：node bot.js run targets/xxx.json）
 //   node bot.js check   只檢查選擇器抓不抓得到，不會點任何東西
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 
 const ROOT = __dirname;
-const CONFIG_PATH = path.join(ROOT, process.env.CHAIR_BOT_CONFIG || 'config.json');
+// 第二個參數可指定設定檔，例如 node bot.js run targets/1102-1100-b100-gray.json
+const CONFIG_PATH = path.resolve(ROOT, process.argv[3] || process.env.CHAIR_BOT_CONFIG || 'config.json');
 const PROFILE_DIR = path.join(ROOT, 'profile');
 const MIN_REFRESH_MS = 1500; // 刷新下限，避免被網站當成攻擊而封鎖
 
@@ -95,14 +96,14 @@ async function openBrowser(cfg) {
 
 async function cmdLogin(cfg) {
   const { ctx, page } = await openBrowser(cfg);
-  await page.goto(cfg.loginUrl || cfg.productUrl);
+  await page.goto(cfg.loginUrl || cfg.productUrl || cfg.categoryUrl);
   log('請在瀏覽器裡完成登入（會員帳號、收件地址可以先存好）。完成後直接關掉瀏覽器即可。');
   await new Promise((r) => ctx.on('close', r));
 }
 
 async function cmdCheck(cfg) {
   const { ctx, page } = await openBrowser(cfg);
-  await page.goto(cfg.productUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(await resolveProductUrl(page, cfg), { waitUntil: 'domcontentloaded' });
   await sleep(2000);
   const s = cfg.selectors;
   for (const [name, list] of Object.entries(s)) {
@@ -117,21 +118,37 @@ async function cmdCheck(cfg) {
   await new Promise((r) => ctx.on('close', r));
 }
 
-// 開賣後重複刷新，直到購買按鈕出現且不是「售完/尚未開賣」
+// 開賣後等購買按鈕可以按：每 100ms 看一次（倒數結束頁面可能自己切換按鈕），每 refreshIntervalMs 才重新整理
 async function waitForBuyButton(page, cfg) {
   const s = cfg.selectors;
+  const buyList = s.buyNow.concat(s.addToCart);
   const deadline = Date.now() + (cfg.giveUpAfterMinutes || 30) * 60_000;
   let round = 0;
   while (Date.now() < deadline) {
     round += 1;
+    const reloadAt = Date.now() + cfg.refreshIntervalMs;
+    while (Date.now() < reloadAt) {
+      const btn = await firstVisible(page, buyList);
+      if (btn && (await btn.isEnabled().catch(() => false))) return btn;
+      await sleep(100);
+    }
     const soldOut = await firstVisible(page, s.soldOut || []);
-    const btn = soldOut ? null : await firstVisible(page, s.buyNow.concat(s.addToCart), 800);
-    if (btn && (await btn.isEnabled())) return btn;
-    log(`第 ${round} 次：${soldOut ? '顯示售完/未開賣' : '還沒看到購買按鈕'}，${cfg.refreshIntervalMs}ms 後刷新`);
-    await sleep(cfg.refreshIntervalMs);
+    log(`第 ${round} 次：${soldOut ? '顯示售完/未開賣' : '還沒看到購買按鈕'}，重新整理`);
     await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
   }
   return null;
+}
+
+// 沒填 productUrl 時，到活動分類頁用商品名稱找到商品頁
+async function resolveProductUrl(page, cfg) {
+  if (cfg.productUrl) return cfg.productUrl;
+  await page.goto(cfg.categoryUrl, { waitUntil: 'domcontentloaded' });
+  const link = page.locator('a', { hasText: new RegExp(cfg.productName) }).first();
+  await link.waitFor({ timeout: 15000 });
+  const href = await link.getAttribute('href');
+  cfg.productUrl = new URL(href, page.url()).href;
+  log(`找到商品頁：${cfg.productUrl}`);
+  return cfg.productUrl;
 }
 
 async function cmdRun(cfg) {
@@ -139,12 +156,13 @@ async function cmdRun(cfg) {
   const s = cfg.selectors;
 
   const startMs = cfg.saleStart ? new Date(cfg.saleStart).getTime() : Date.now();
-  const offset = await serverClockOffset(ctx.request, cfg.productUrl);
+  const offset = await serverClockOffset(ctx.request, cfg.productUrl || cfg.categoryUrl);
+  log(`目標：${cfg.productName || cfg.productUrl}`);
   log(`伺服器時間差 ${Math.round(offset)}ms；開賣時間 ${new Date(startMs).toLocaleString('zh-TW')}`);
 
   // 提前打開頁面暖機（DNS、登入 cookie、圖片快取）
   await waitUntil(startMs - (cfg.preloadSeconds || 60) * 1000, offset, '預熱');
-  await page.goto(cfg.productUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(await resolveProductUrl(page, cfg), { waitUntil: 'domcontentloaded' });
   log('已開啟商品頁，等待開賣…');
   await waitUntil(startMs, offset, '開賣');
   await page.reload({ waitUntil: 'domcontentloaded' });
