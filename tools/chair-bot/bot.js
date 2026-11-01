@@ -27,9 +27,13 @@ function loadConfig() {
   return cfg;
 }
 
-// 把設定裡的選擇器清單轉成 locator：支援 CSS（css=...）或按鈕文字（其他字串）
+// 把設定裡的選擇器清單轉成 locator：css=... 為 CSS，exact=... 為「整段文字完全相同」，其他字串為「包含這段文字」
 function anyOf(page, list) {
-  const locs = list.map((s) => (s.startsWith('css=') ? page.locator(s.slice(4)) : page.getByText(s, { exact: false })));
+  const locs = list.map((s) => {
+    if (s.startsWith('css=')) return page.locator(s.slice(4));
+    if (s.startsWith('exact=')) return page.getByText(s.slice(6), { exact: true });
+    return page.getByText(s, { exact: false });
+  });
   return locs.reduce((a, b) => a.or(b)).filter({ visible: true }).first();
 }
 
@@ -116,10 +120,21 @@ async function cmdCheck(cfg) {
     log(`${found ? '✔' : '✘'} 規格「${opt}」`);
   }
   if (cfg.cartUrl) {
-    log(`購物車：${(await cartHasItems(page, cfg)) ? '⚠ 目前有商品，開賣前請清空（否則不會自動送出）' : '✔ 空的'}`);
+    const state = await cartState(page, cfg);
+    log(`購物車：${{ empty: '✔ 空的', items: '⚠ 目前有商品，開賣前請清空（否則不會自動送出）', error: `✘ 購物車網址打不開（${cfg.cartUrl}），請確認 cartUrl` }[state]}`);
   }
   log('檢查完畢，瀏覽器保留讓你對照，關掉即可結束。');
   await new Promise((r) => ctx.on('close', r));
+}
+
+// 文字可能在按鈕裡的 <span>，要看外層按鈕有沒有 disabled
+async function isClickable(loc) {
+  return loc
+    .evaluate((el) => {
+      const b = el.closest('button, a, [role=button]') || el;
+      return !(b.disabled || b.getAttribute('aria-disabled') === 'true' || /\bdisabled\b/i.test(b.getAttribute('class') || ''));
+    })
+    .catch(() => false);
 }
 
 // 開賣後等購買按鈕可以按：每 100ms 看一次（倒數結束頁面可能自己切換按鈕），每 refreshIntervalMs 才重新整理
@@ -133,7 +148,7 @@ async function waitForBuyButton(page, cfg) {
     const reloadAt = Date.now() + cfg.refreshIntervalMs;
     while (Date.now() < reloadAt) {
       const btn = await firstVisible(page, buyList);
-      if (btn && (await btn.isEnabled().catch(() => false))) return btn;
+      if (btn && (await isClickable(btn))) return btn;
       await sleep(100);
     }
     const soldOut = await firstVisible(page, s.soldOut || []);
@@ -178,9 +193,11 @@ async function fillCheckout(page, cfg) {
   return ok;
 }
 
-async function cartHasItems(page, cfg) {
-  await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' });
-  return Boolean(await firstVisible(page, cfg.selectors.cartHasItems || [], 3000));
+// 回傳 'empty'、'items' 或 'error'（購物車網址打不開，無法確認）
+async function cartState(page, cfg) {
+  const res = await page.goto(cfg.cartUrl, { waitUntil: 'domcontentloaded' }).catch(() => null);
+  if (!res || res.status() >= 400 || /錯誤|error|not found/i.test(await page.title())) return 'error';
+  return (await firstVisible(page, cfg.selectors.cartHasItems || [], 3000)) ? 'items' : 'empty';
 }
 
 async function cmdRun(cfg) {
@@ -196,9 +213,12 @@ async function cmdRun(cfg) {
   await waitUntil(startMs - (cfg.preloadSeconds || 60) * 1000, offset, '預熱');
   let autoSubmit = Boolean(cfg.autoSubmit);
   log(`模式：${autoSubmit ? '自動送出訂單' : '停在結帳頁，由你按送出'}`);
-  if (autoSubmit && (await cartHasItems(page, cfg))) {
+  const state = autoSubmit ? await cartState(page, cfg) : 'empty';
+  if (state !== 'empty') {
     autoSubmit = false;
-    log('⚠ 購物車裡已經有商品，為避免一起下單，本次改為「不自動送出」。要自動送出請先清空購物車再重跑。');
+    log(state === 'items'
+      ? '⚠ 購物車裡已經有商品，為避免一起下單，本次改為「不自動送出」。要自動送出請先清空購物車再重跑。'
+      : '⚠ 購物車網址打不開，無法確認購物車是空的，本次改為「不自動送出」。');
   }
   await page.goto(await resolveProductUrl(page, cfg), { waitUntil: 'domcontentloaded' });
   log('已開啟商品頁，等待開賣…');
@@ -261,7 +281,7 @@ async function cmdRun(cfg) {
   }
 
   await beep(page);
-  log('★ 已停在結帳頁，請立刻確認商品、金額、付款方式，然後自己按送出訂單。');
+  log('★ 已加入購物車，請立刻在瀏覽器完成結帳：確認商品、金額、付款方式，然後自己按送出訂單。');
   if (cfg.couponCode) log(`提醒：折扣碼 ${cfg.couponCode}`);
   await new Promise((r) => ctx.on('close', r));
 }

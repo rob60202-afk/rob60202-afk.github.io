@@ -17,13 +17,14 @@
   "chromeChannel": "",
   "selectors": {
     "buyNow": [
-      "立即搶購",
-      "立即購買",
-      "直接購買"
+      "exact=立即搶購",
+      "exact=立即購買",
+      "exact=直接購買",
+      "exact=立即結帳"
     ],
     "addToCart": [
-      "加入購物車",
-      "放入購物車"
+      "exact=加入購物車",
+      "exact=放入購物車"
     ],
     "soldOut": [
       "css=button:has-text('已售完')",
