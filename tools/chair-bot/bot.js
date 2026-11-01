@@ -204,27 +204,23 @@ async function fillCheckout(page, cfg) {
     if (others.length) log(`⚠ 結帳頁有其他商品：${others[0].slice(0, 40)}`);
     if (!items.length || others.length) ok = false;
   }
-  // 金額核對：要看得到特價（例如 NT$11），而且畫面上每個金額都不超過上限（特價 + 運費），
-  // 避免活動結束恢復原價、或購物車裡還有別的商品時照樣下單
+  // 價格核對：只看每個商品那一行的價格，運費、總計都不看。
+  // 每個「【西昊】」商品那一行都要看得到特價（例如 NT$11），避免活動結束恢復原價時照樣下單
   if (cfg.targetPrice) {
-    const amounts = await visibleAmounts(page);
-    log(`結帳頁金額：${amounts.map((a) => `NT$${a}`).join('、') || '（沒看到）'}`);
-    const max = Math.max(0, ...amounts);
-    if (!amounts.includes(cfg.targetPrice)) {
-      log(`⚠ 結帳頁沒看到特價 NT$${cfg.targetPrice}`);
-      ok = false;
-    }
-    if (max > cfg.maxOrderAmount) {
-      log(`⚠ 結帳頁出現 NT$${max}，超過上限 NT$${cfg.maxOrderAmount}（可能不是特價，或有其他商品）`);
+    const rows = await itemRowPrices(page, cfg.selectors.cartItemText || '【西昊】');
+    for (const r of rows) log(`結帳頁商品：${r.name.slice(0, 45)} → ${r.amounts.map((a) => `NT$${a}`).join('、') || '（沒看到價格）'}`);
+    if (!rows.length || rows.some((r) => !r.amounts.includes(cfg.targetPrice))) {
+      log(`⚠ 商品價格不是 NT$${cfg.targetPrice}`);
       ok = false;
     }
   }
   return ok;
 }
 
-// 抓畫面上看得到的「NT$ 金額」；略過有刪除線的原價、看不到的文字，以及「滿額、免運」之類的宣傳文字
-async function visibleAmounts(page) {
-  return page.evaluate(() => {
+// 找出結帳頁每個商品那一行的價格：從商品名稱往外找，找到第一層有「NT$ 金額」的區塊（不會包到別的商品）。
+// 略過有刪除線的原價、看不到的文字，以及標明「原價、定價」的金額
+async function itemRowPrices(page, marker) {
+  return page.evaluate((marker) => {
     const isStruck = (node) => {
       for (let a = node.parentElement; a && a !== document.body; a = a.parentElement) {
         if (/^(DEL|S|STRIKE)$/.test(a.tagName) || getComputedStyle(a).textDecorationLine.includes('line-through')) return true;
@@ -235,28 +231,34 @@ async function visibleAmounts(page) {
       const el = node.parentElement;
       return !el || !el.getClientRects().length || getComputedStyle(el).visibility === 'hidden';
     };
-    // 元素裡「看得到、沒有刪除線」的文字
-    const cleanText = (el) => {
-      let t = '';
+    const textNodes = (el) => {
+      const out = [];
       const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-      for (let n; (n = w.nextNode()); ) if (!isStruck(n) && !isHidden(n)) t += n.textContent;
-      return t.replace(/\s+/g, ' ');
+      for (let n; (n = w.nextNode()); ) if (!isStruck(n) && !isHidden(n)) out.push(n);
+      return out;
     };
-    const out = [];
-    const seen = new Set();
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let n; (n = walker.nextNode()); ) {
-      if (!n.textContent.includes('NT$') || isStruck(n) || isHidden(n)) continue;
-      // 「NT$」和數字可能分在不同的 <span>，往上找到包含完整金額的那一層
+    const cleanText = (el) => textNodes(el).map((n) => n.textContent).join('').replace(/\s+/g, ' ');
+    const amountsIn = (text) =>
+      [...text.replace(/(原價|定價|建議售價|市價)[:：]?\s*NT\$\s*[\d,]+/g, '').matchAll(/NT\$\s*([\d,]+)/g)].map((m) => Number(m[1].replace(/,/g, '')));
+    const hasMoney = (text) => /NT\$\s*[\d,]+/.test(text);
+
+    const rows = [];
+    for (const n of textNodes(document.body)) {
+      if (!n.textContent.includes(marker)) continue;
+      const name = n.textContent.trim();
       let el = n.parentElement;
       let text = cleanText(el);
-      for (let i = 0; i < 3 && !/NT\$\s*[\d,]+/.test(text) && el.parentElement; i++) text = cleanText((el = el.parentElement));
-      if (seen.has(el) || /滿|免運|還差|再買|折抵|門檻/.test(text)) continue;
-      seen.add(el);
-      for (const m of text.matchAll(/NT\$\s*([\d,]+)/g)) out.push(Number(m[1].replace(/,/g, '')));
+      for (let i = 0; i < 6 && !hasMoney(text) && el.parentElement && el.parentElement !== document.body; i++) {
+        const up = el.parentElement;
+        // 再往外會包到別的商品就停
+        if (textNodes(up).some((t) => t.textContent.includes(marker) && t.textContent.trim() !== name)) break;
+        el = up;
+        text = cleanText(up);
+      }
+      rows.push({ name, amounts: amountsIn(text) });
     }
-    return out;
-  });
+    return rows;
+  }, marker);
 }
 
 // 回傳 'empty'、'items' 或 'error'（購物車網址打不開，無法確認）
@@ -279,7 +281,7 @@ async function cmdRun(cfg) {
   // 提前打開頁面暖機（DNS、登入 cookie、圖片快取）
   await waitUntil(startMs - (cfg.preloadSeconds || 60) * 1000, offset, '預熱');
   let autoSubmit = Boolean(cfg.autoSubmit);
-  log(`模式：${autoSubmit ? `自動下單（結帳頁要看到 NT$${cfg.targetPrice}、總額不超過 NT$${cfg.maxOrderAmount}、只有這張椅子）` : '停在結帳頁，由你按送出'}`);
+  log(`模式：${autoSubmit ? `自動下單（結帳頁的商品價格要是 NT$${cfg.targetPrice}、只有這張椅子；運費不列入判斷）` : '停在結帳頁，由你按送出'}`);
   const state = autoSubmit ? await cartState(page, cfg) : 'empty';
   if (state === 'items' || state === 'error') {
     autoSubmit = false;
