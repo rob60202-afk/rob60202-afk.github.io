@@ -7,12 +7,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _num(name: str, default, cast):
+    """讀數字設定；留白就用預設值，填錯會指出是哪一個變數。"""
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return cast(raw)
+    except ValueError:
+        kind = "整數" if cast is int else "數字"
+        raise ValueError(f".env 的 {name} 必須是{kind}，目前填的是「{raw}」") from None
+
+
 def _f(name: str, default: float) -> float:
-    return float(os.getenv(name, default))
+    return _num(name, default, float)
 
 
 def _i(name: str, default: int) -> int:
-    return int(os.getenv(name, default))
+    return _num(name, default, int)
 
 
 @dataclass

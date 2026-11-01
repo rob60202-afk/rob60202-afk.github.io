@@ -72,14 +72,16 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
 
     df["atr"] = atr(df, 14)
     df["atr_pct"] = df["atr"] / close
-    # 異常波動防護用（不是模型特徵）：這根真實波幅 ÷ 前一根 ATR
-    df["shock_ratio"] = true_range(df) / df["atr"].shift(1)
 
     df["vol_ratio"] = df["volume"] / df["volume"].rolling(24).mean()
     df["hl_range"] = (df["high"] - df["low"]) / close
     df["close_pos"] = (close - df["low"]) / (df["high"] - df["low"]).replace(0, np.nan)
 
-    return df.replace([np.inf, -np.inf], np.nan)
+    df = df.replace([np.inf, -np.inf], np.nan)
+    # 異常波動防護用（不是模型特徵）：這根真實波幅 ÷ 前一根 ATR。
+    # 放在 inf→NaN 之後：前一根 ATR 是 0（完全沒波動）又突然出現波幅時，比例是無限大，要算成異常波動
+    df["shock_ratio"] = true_range(df) / df["atr"].shift(1)
+    return df
 
 
 def add_label(df: pd.DataFrame, horizon: int, fee_rate: float) -> pd.DataFrame:

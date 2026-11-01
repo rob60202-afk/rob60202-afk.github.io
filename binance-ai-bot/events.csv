@@ -1,4 +1,4 @@
-# 重大事件清單（B. 重大事件避開）：事件前後幾小時不開新倉，時間範圍在 .env 設定
+﻿# 重大事件清單（B. 重大事件避開）：事件前後幾小時不開新倉，時間範圍在 .env 設定
 # 格式：datetime（當地時間 YYYY-MM-DD HH:MM）, timezone, name
 # timezone 用 America/New_York 時，美國夏令／冬令時間會自動換算，不用自己算台灣時間
 # 要用台灣時間填寫，timezone 就寫 Asia/Taipei

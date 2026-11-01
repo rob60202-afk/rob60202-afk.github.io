@@ -14,6 +14,7 @@ import guards
 import model as ai
 from config import Config
 from exchange import Exchange
+from features import add_features
 from strategy import Position, entry_signal, exit_reason, position_size, trail_stop
 
 log = logging.getLogger("bot")
@@ -29,8 +30,14 @@ class Bot:
         self.model_path = os.path.join(cfg.model_dir, f"{cfg.symbol.replace('/', '')}_{cfg.timeframe}.joblib")
         self.model, self.meta = ai.load(self.model_path)
         self.state = self._load_state()
-        self.events = guards.load_events(cfg.events_file)
         self.tf = pd.Timedelta(seconds=ccxt.Exchange.parse_timeframe(cfg.timeframe))
+        # 事件清單讀不到也要能啟動（不然持倉沒人顧）；None = 沒有可用清單 → 修好前不開新倉
+        self.events: list[guards.Event] | None = None
+        try:
+            self.events = guards.load_events(cfg.events_file)
+        except Exception as e:
+            log.error("事件清單讀取失敗，修好前不開新倉（已持有的部位照常停損 / 停利）：%s", e)
+        self.shock: tuple[pd.Timestamp, float] | None = None
 
     # ---------- 狀態保存（重啟後能接續原本的部位） ----------
     def _load_state(self) -> dict:
@@ -140,6 +147,10 @@ class Bot:
         self._log_trade(pos, fill, reason, pnl)
 
     @staticmethod
+    def _now() -> pd.Timestamp:
+        return pd.Timestamp.now(tz="UTC")
+
+    @staticmethod
     def _local(ts: pd.Timestamp) -> str:
         """轉成電腦所在時區顯示（在台灣就是台灣時間）。"""
         return ts.to_pydatetime().astimezone().strftime("%m/%d %H:%M")
@@ -184,45 +195,77 @@ class Bot:
             log.info("K 棒 %s 收 %.2f｜上漲機率 %.3f｜趨勢%s｜權益 %.2f %s",
                      bar_ts, last["close"], proba, "向上" if trend_ok else "向下", equity, self.cfg.quote_asset)
 
-            # 防護檢查用的時間點 = 這根 K 棒的收盤時間（和回測一致）
-            bar_close = bars.index[-1] + self.tf
-            try:  # 每根 K 棒重讀，改清單不用重開
-                self.events = guards.load_events(self.cfg.events_file)
-            except ValueError as e:
-                log.error("事件清單格式錯誤，沿用上一次的清單：%s", e)
-            if guards.is_shock(self.cfg, last["shock_ratio"]):
-                until = guards.shock_pause_until(self.cfg, bar_close)
-                self.state["shock_until"] = until.isoformat()
-                log.warning("⚡ 異常波動：波幅是平常的 %.1f 倍，%s 前不開新倉",
-                            last["shock_ratio"], self._local(until))
-            shock_until = pd.Timestamp(self.state["shock_until"]) if self.state.get("shock_until") else None
-            upcoming = guards.next_event(bar_close, self.events)
-            if upcoming and upcoming.when - bar_close <= pd.Timedelta(hours=24) \
-                    and self.state.get("announced_event") != upcoming.when.isoformat():
-                self.state["announced_event"] = upcoming.when.isoformat()
-                log.info("📅 24 小時內有重大事件：%s（%s）", upcoming.name, self._local(upcoming.when))
-
+            # 1) 先處理持倉：防護只管進場，所以放在出場之後，防護出任何錯都不會影響出場與移動停損
             if pos:
                 if proba <= self.cfg.exit_proba:
                     self.sell(price, "model_exit")
                 else:
                     trail_stop(self.cfg, pos, last["close"], last["atr"])
                     self.position = pos
+
+            # 2) 防護檢查。時間點 = K 棒收盤（和回測一致）；如果這根 K 棒晚處理（重開機、斷線），
+            #    也用「現在」再檢查一次，避免晚了才下單、剛好落在事件時段內
+            bar_close = bars.index[-1] + self.tf
+            now = self._now()
+            guards_ok = self._refresh_guards(bars, max(bar_close, now))
+
+            # 3) 沒持倉才考慮進場
+            if pos:
+                pass  # 這根 K 棒已處理過持倉，不同時進場
             elif self.state["halted"]:
                 log.warning("機器人處於暫停狀態，不開新倉")
             elif daily_loss_hit:
                 log.warning("今日虧損已達上限 %.1f%%，今天不再開新倉", self.cfg.max_daily_loss_pct * 100)
             elif entry_signal(self.cfg, proba, trend_ok):
-                block = guards.entry_block_reason(self.cfg, bar_close, shock_until, self.events)
-                if block == "shock":
-                    log.warning("有進場訊號，但異常波動暫停中（到 %s），不開新倉", self._local(shock_until))
-                elif block == "event":
-                    ev = guards.event_in_window(self.cfg, bar_close, self.events)
-                    log.warning("有進場訊號，但接近重大事件「%s」（%s），不開新倉", ev.name, self._local(ev.when))
+                if not guards_ok:
+                    log.warning("有進場訊號，但防護資料不完整（看上面的錯誤訊息），保守起見不開新倉")
+                elif reason := self._entry_block(bar_close, now):
+                    log.warning("有進場訊號，但%s，不開新倉", reason)
                 else:
                     self.buy(price, last["atr"])
 
         self._save_state()
+
+    # ---------- 進場防護 ----------
+    def _refresh_guards(self, bars: pd.DataFrame, ref: pd.Timestamp) -> bool:
+        """重讀事件清單、掃描異常波動、預告事件。絕不丟出例外；回傳 False 代表防護資料不完整。"""
+        ok = True
+        try:  # 每根 K 棒重讀，改清單不用重開
+            self.events = guards.load_events(self.cfg.events_file)
+        except Exception as e:
+            ok = self.events is not None
+            log.error("事件清單讀取失敗，%s：%s", "沿用上一次的清單" if ok else "修好前不開新倉", e)
+
+        try:
+            self.shock = guards.latest_shock(self.cfg, add_features(bars), self.tf)
+            until = self.shock[0].isoformat() if self.shock else None
+            if self.shock and self.shock[0] > ref and until != self.state.get("shock_until"):
+                log.warning("⚡ 異常波動：波幅是平常的 %.1f 倍，%s 前不開新倉",
+                            self.shock[1], self._local(self.shock[0]))
+            self.state["shock_until"] = until
+        except Exception:
+            ok = False
+            log.exception("異常波動檢查失敗")
+
+        if self.events:
+            upcoming = guards.next_event(ref, self.events)
+            if upcoming and upcoming.when - ref <= pd.Timedelta(hours=24) \
+                    and self.state.get("announced_event") != upcoming.when.isoformat():
+                self.state["announced_event"] = upcoming.when.isoformat()
+                log.info("📅 24 小時內有重大事件：%s（%s）", upcoming.name, self._local(upcoming.when))
+        return ok
+
+    def _entry_block(self, bar_close: pd.Timestamp, now: pd.Timestamp) -> str | None:
+        """回傳擋住進場的原因（中文），None 代表可以進場。K 棒收盤與現在兩個時間點都要通過。"""
+        shock_until = self.shock[0] if self.shock else None
+        for t in (bar_close, now):
+            block = guards.entry_block_reason(self.cfg, t, shock_until, self.events)
+            if block == "shock":
+                return f"異常波動暫停中（到 {self._local(shock_until)}）"
+            if block == "event":
+                ev = guards.event_in_window(self.cfg, t, self.events)
+                return f"接近重大事件「{ev.name}」（{self._local(ev.when)}）"
+        return None
 
     def run(self, once: bool = False) -> None:
         log.info("啟動｜模式 %s｜%s %s", self.cfg.mode.upper(), self.cfg.symbol, self.cfg.timeframe)

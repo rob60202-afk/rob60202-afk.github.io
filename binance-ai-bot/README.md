@@ -70,25 +70,30 @@ python main.py backtest
 ```json
 {
   "with_guards": {
-    "strategy_return_pct": -0.08,
+    "strategy_return_pct": 0.48,
     "buy_hold_return_pct": -19.51,
-    "max_drawdown_pct": -1.46,
+    "max_drawdown_pct": -1.45,
     "trades": 10,
-    "win_rate_pct": 60.0,
-    "profit_factor": 0.96,
-    "blocked_entries": { "shock": 7, "event": 0 }
+    "win_rate_pct": 70.0,
+    "profit_factor": 1.33,
+    "blocked_entries": { "shock": 4, "event": 1 }
   },
   "without_guards": {
-    "strategy_return_pct": -1.5,
-    "max_drawdown_pct": -2.09,
+    "strategy_return_pct": 0.85,
+    "max_drawdown_pct": -1.88,
     "trades": 13,
-    "profit_factor": 0.55
+    "profit_factor": 1.42
   },
   "events_in_period": 4
 }
 ```
 
-`blocked_entries` 是被防護擋掉的進場次數：`shock` = A 異常波動，`event` = B 重大事件。
+`blocked_entries` 是被防護擋下的「進場訊號」次數（以 K 棒計算，同一段暫停內連續出現的訊號會重複計算）：
+`shock` = A 異常波動，`event` = B 重大事件。
+
+**注意**：上面這個例子裡，開防護反而賺得比較少——防護是「保險」，平靜行情時會讓你少做幾筆，
+真正的價值在閃崩、重大消息這種少見但傷很重的時候。請用**真實資料**比較 `with_guards` 和
+`without_guards`，再決定要不要開、參數要多嚴。
 
 **怎麼看**：
 
@@ -158,8 +163,12 @@ python main.py run
 ### A、B 防護補充說明
 
 - 兩個防護都**只擋新倉、不會強迫賣出**。已經持有的部位，照樣由停損 / 停利保護。
-- 判斷時間點是每根 K 棒收盤，回測與實盤用同一套邏輯。
+- 判斷時間點是每根 K 棒收盤，回測與實盤用同一套邏輯。實盤如果晚處理（重開機、斷線後補上），
+  會用「現在時間」再檢查一次；也會往回掃最近 300 根 K 棒，關機期間發生的異常波動不會漏掉。
 - 想關掉：`SHOCK_ATR_MULT=0` 關 A；`EVENT_BEFORE_HOURS=0` 加 `EVENT_AFTER_HOURS=0` 關 B。
+- **B 只適合 1h、4h 週期**：機器人只在 K 棒收盤時決定要不要進場，日線（1d）收盤在台灣早上 8 點，
+  永遠不會落在事件前後 2 小時內，等於沒作用；12h 也只擋得到一部分。用長週期時，請把
+  `EVENT_BEFORE_HOURS` 調大（例如 1d 設 24），或接受 B 不生效。
 
 ### 怎麼維護 `events.csv`
 
@@ -176,6 +185,11 @@ datetime,timezone,name
   （例：12/9 14:00 美東 = 台灣 12/10 凌晨 3:00）
 - 想用台灣時間填也可以，`timezone` 改寫 `Asia/Taipei`。
 - 想加其他事件（例如美國非農就業報告），照同樣格式加一行就好。機器人每根 K 棒會重新讀取，不用重開。
+- **用「記事本」編輯最安全**（右鍵 → 開啟檔案 → 記事本），存檔時編碼選 UTF-8。
+  用 Excel 也可以，另存時選「CSV UTF-8（逗號分隔）」；存成一般 CSV（ANSI）程式也讀得懂。
+- 改完看一下 `logs/bot.log`：如果出現「事件清單讀取失敗」，會寫出是第幾行有問題。
+  - 機器人**跑到一半**改壞：沿用上一次讀到的正確清單，照常運作。
+  - **啟動時**就讀不到：機器人照常啟動、照常顧停損停利，但**修好之前不開新倉**（寧可少做，不要誤闖事件）。
 - 日程偶爾會改（例如美國政府停擺），**建議每季核對一次**：
   - FOMC：<https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm>
   - CPI：<https://www.bls.gov/schedule/news_release/cpi.htm>
