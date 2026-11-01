@@ -22,9 +22,9 @@ def rsi(close: pd.Series, period: int = 14) -> pd.Series:
     return 100 - 100 / (1 + rs)
 
 
-def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+def true_range(df: pd.DataFrame) -> pd.Series:
     prev_close = df["close"].shift(1)
-    tr = pd.concat(
+    return pd.concat(
         [
             df["high"] - df["low"],
             (df["high"] - prev_close).abs(),
@@ -32,7 +32,10 @@ def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
         ],
         axis=1,
     ).max(axis=1)
-    return tr.ewm(alpha=1 / period, adjust=False).mean()
+
+
+def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    return true_range(df).ewm(alpha=1 / period, adjust=False).mean()
 
 
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -69,6 +72,8 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
 
     df["atr"] = atr(df, 14)
     df["atr_pct"] = df["atr"] / close
+    # 異常波動防護用（不是模型特徵）：這根真實波幅 ÷ 前一根 ATR
+    df["shock_ratio"] = true_range(df) / df["atr"].shift(1)
 
     df["vol_ratio"] = df["volume"] / df["volume"].rolling(24).mean()
     df["hl_range"] = (df["high"] - df["low"]) / close

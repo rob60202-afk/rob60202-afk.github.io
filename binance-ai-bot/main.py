@@ -46,6 +46,7 @@ def main() -> None:
 
     if args.cmd == "backtest":
         from backtest import run_backtest
+        from guards import load_events
 
         if args.csv:
             ohlcv = load_csv(args.csv)
@@ -54,7 +55,8 @@ def main() -> None:
 
             cfg.mode = "paper"  # 回測只需要公開行情
             ohlcv = Exchange(cfg).load_or_fetch_history(cfg.train_bars)
-        print(json.dumps(run_backtest(cfg, ohlcv), indent=2, ensure_ascii=False))
+        result = run_backtest(cfg, ohlcv, load_events(cfg.events_file))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
 
     elif args.cmd == "train":
         from bot import Bot

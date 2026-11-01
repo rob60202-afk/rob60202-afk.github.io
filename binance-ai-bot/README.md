@@ -17,7 +17,8 @@
    │
    ├─ AI 模型輸出「未來 4 根 K 棒上漲超過手續費」的機率
    │
-   ├─ 無持倉：機率 ≥ 0.60 且價格在 EMA50 之上 → 買進
+   ├─ 無持倉：機率 ≥ 0.60 且價格在 EMA50 之上
+   │          且沒有被防護擋住（A 異常波動暫停中／B 重大事件前後）→ 買進
    │          部位大小 = 停損打到時只虧總資金 1%
    │
    └─ 有持倉：機率 ≤ 0.45 → 賣出；否則把停損往上拉（移動停損）
@@ -31,6 +32,8 @@
 | `features.py` | 技術指標特徵工程（只用過去資料，無偷看未來） |
 | `model.py` | AI 模型訓練、時間序列交叉驗證、預測 |
 | `strategy.py` | 進出場規則、部位大小、移動停損（回測與實盤共用） |
+| `guards.py` | 進場防護：A 異常波動暫停、B 重大事件避開（回測與實盤共用） |
+| `events.csv` | 重大事件清單（FOMC 利率決議、美國 CPI 公布），可自行增減 |
 | `backtest.py` | 回測（前 70% 訓練、後 30% 驗證，含手續費與滑價） |
 | `exchange.py` | 幣安 API（透過 ccxt） |
 | `bot.py` | 自動交易主迴圈、狀態保存、風控熔斷 |
@@ -60,19 +63,32 @@ cp .env.example .env             # Windows: copy .env.example .env
 python main.py backtest
 ```
 
+同一個模型會跑兩次：`with_guards`（開防護）和 `without_guards`（不開防護），方便比較防護有沒有幫助。
+
 輸出範例（用模擬資料跑的，僅示範格式，不代表真實績效）：
 
 ```json
 {
-  "strategy_return_pct": 0.85,
-  "buy_hold_return_pct": -19.51,
-  "max_drawdown_pct": -1.88,
-  "sharpe": 1.02,
-  "trades": 13,
-  "win_rate_pct": 61.5,
-  "profit_factor": 1.42
+  "with_guards": {
+    "strategy_return_pct": -0.08,
+    "buy_hold_return_pct": -19.51,
+    "max_drawdown_pct": -1.46,
+    "trades": 10,
+    "win_rate_pct": 60.0,
+    "profit_factor": 0.96,
+    "blocked_entries": { "shock": 7, "event": 0 }
+  },
+  "without_guards": {
+    "strategy_return_pct": -1.5,
+    "max_drawdown_pct": -2.09,
+    "trades": 13,
+    "profit_factor": 0.55
+  },
+  "events_in_period": 4
 }
 ```
+
+`blocked_entries` 是被防護擋掉的進場次數：`shock` = A 異常波動，`event` = B 重大事件。
 
 **怎麼看**：
 
@@ -134,8 +150,35 @@ python main.py run
 | 只做多、順勢 | 有 | 價格在 EMA50 之下不進場；現貨不放空、不開槓桿 |
 | 下單不自動重試 | 有 | 避免網路逾時造成重複下單 |
 | 真錢需二次確認 | 有 | 沒設 `LIVE_CONFIRM` 會拒絕啟動 |
+| **A. 異常波動暫停** `SHOCK_ATR_MULT` / `SHOCK_PAUSE_HOURS` | 3 倍 / 6 小時 | 單根 K 棒波幅超過平常 3 倍（閃崩、急拉、突發消息），之後 6 小時不開新倉 |
+| **B. 重大事件避開** `EVENT_BEFORE_HOURS` / `EVENT_AFTER_HOURS` | 前 2 小時 / 後 2 小時 | `events.csv` 裡的事件前後不開新倉 |
 
 **連續虧損暫停後怎麼恢復**：打開 `state.json`，把 `"halted": true` 改成 `false`，重新啟動。
+
+### A、B 防護補充說明
+
+- 兩個防護都**只擋新倉、不會強迫賣出**。已經持有的部位，照樣由停損 / 停利保護。
+- 判斷時間點是每根 K 棒收盤，回測與實盤用同一套邏輯。
+- 想關掉：`SHOCK_ATR_MULT=0` 關 A；`EVENT_BEFORE_HOURS=0` 加 `EVENT_AFTER_HOURS=0` 關 B。
+
+### 怎麼維護 `events.csv`
+
+內建 2026～2027 年的 FOMC 利率決議（14:00 美東）和美國 CPI 公布（08:30 美東），共 40 筆，
+都已和聯準會、美國勞工統計局（BLS）的公告核對過。
+
+```
+datetime,timezone,name
+2026-12-09 14:00,America/New_York,FOMC 利率決議
+2026-12-10 08:30,America/New_York,美國 CPI 公布
+```
+
+- 時間直接照官方公告的**美東時間**填，`timezone` 寫 `America/New_York`，程式會自動處理美國夏令時間。
+  （例：12/9 14:00 美東 = 台灣 12/10 凌晨 3:00）
+- 想用台灣時間填也可以，`timezone` 改寫 `Asia/Taipei`。
+- 想加其他事件（例如美國非農就業報告），照同樣格式加一行就好。機器人每根 K 棒會重新讀取，不用重開。
+- 日程偶爾會改（例如美國政府停擺），**建議每季核對一次**：
+  - FOMC：<https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm>
+  - CPI：<https://www.bls.gov/schedule/news_release/cpi.htm>
 
 ---
 
@@ -148,7 +191,9 @@ python main.py run
 3. **回測假設**：以 K 棒的高低點判斷停損 / 停利，同一根同時觸及時保守假設先停損；
    滑價固定 0.05%，極端行情下實際滑價會更大。
 4. **只支援單一幣對、現貨、做多**。
-5. 不構成任何投資建議。
+5. **防護 B 只認得清單上的事件**：交易所被駭、監管突襲這類無法預先排程的突發事件，只能靠防護 A
+   和停損應對；而防護 A 要等那根 K 棒收盤（1h 週期最多等 1 小時）才會觸發。
+6. 不構成任何投資建議。
 
 ---
 

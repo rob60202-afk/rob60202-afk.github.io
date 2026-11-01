@@ -7,6 +7,10 @@ import time
 from dataclasses import asdict
 from datetime import datetime, timezone
 
+import ccxt
+import pandas as pd
+
+import guards
 import model as ai
 from config import Config
 from exchange import Exchange
@@ -25,6 +29,8 @@ class Bot:
         self.model_path = os.path.join(cfg.model_dir, f"{cfg.symbol.replace('/', '')}_{cfg.timeframe}.joblib")
         self.model, self.meta = ai.load(self.model_path)
         self.state = self._load_state()
+        self.events = guards.load_events(cfg.events_file)
+        self.tf = pd.Timedelta(seconds=ccxt.Exchange.parse_timeframe(cfg.timeframe))
 
     # ---------- 狀態保存（重啟後能接續原本的部位） ----------
     def _load_state(self) -> dict:
@@ -43,6 +49,7 @@ class Bot:
             "day_start_equity": None,
             "consecutive_losses": 0,
             "halted": False,
+            "shock_until": None,
         }
 
     def _save_state(self) -> None:
@@ -132,6 +139,11 @@ class Bot:
         log.info("💰 賣出 %.6f @ %.2f（%s），損益 %.2f %s", pos.qty, fill, reason, pnl, self.cfg.quote_asset)
         self._log_trade(pos, fill, reason, pnl)
 
+    @staticmethod
+    def _local(ts: pd.Timestamp) -> str:
+        """轉成電腦所在時區顯示（在台灣就是台灣時間）。"""
+        return ts.to_pydatetime().astimezone().strftime("%m/%d %H:%M")
+
     def _log_trade(self, pos: Position, fill: float, reason: str, pnl: float) -> None:
         os.makedirs("logs", exist_ok=True)
         path = os.path.join("logs", "trades.csv")
@@ -172,6 +184,24 @@ class Bot:
             log.info("K 棒 %s 收 %.2f｜上漲機率 %.3f｜趨勢%s｜權益 %.2f %s",
                      bar_ts, last["close"], proba, "向上" if trend_ok else "向下", equity, self.cfg.quote_asset)
 
+            # 防護檢查用的時間點 = 這根 K 棒的收盤時間（和回測一致）
+            bar_close = bars.index[-1] + self.tf
+            try:  # 每根 K 棒重讀，改清單不用重開
+                self.events = guards.load_events(self.cfg.events_file)
+            except ValueError as e:
+                log.error("事件清單格式錯誤，沿用上一次的清單：%s", e)
+            if guards.is_shock(self.cfg, last["shock_ratio"]):
+                until = guards.shock_pause_until(self.cfg, bar_close)
+                self.state["shock_until"] = until.isoformat()
+                log.warning("⚡ 異常波動：波幅是平常的 %.1f 倍，%s 前不開新倉",
+                            last["shock_ratio"], self._local(until))
+            shock_until = pd.Timestamp(self.state["shock_until"]) if self.state.get("shock_until") else None
+            upcoming = guards.next_event(bar_close, self.events)
+            if upcoming and upcoming.when - bar_close <= pd.Timedelta(hours=24) \
+                    and self.state.get("announced_event") != upcoming.when.isoformat():
+                self.state["announced_event"] = upcoming.when.isoformat()
+                log.info("📅 24 小時內有重大事件：%s（%s）", upcoming.name, self._local(upcoming.when))
+
             if pos:
                 if proba <= self.cfg.exit_proba:
                     self.sell(price, "model_exit")
@@ -183,7 +213,14 @@ class Bot:
             elif daily_loss_hit:
                 log.warning("今日虧損已達上限 %.1f%%，今天不再開新倉", self.cfg.max_daily_loss_pct * 100)
             elif entry_signal(self.cfg, proba, trend_ok):
-                self.buy(price, last["atr"])
+                block = guards.entry_block_reason(self.cfg, bar_close, shock_until, self.events)
+                if block == "shock":
+                    log.warning("有進場訊號，但異常波動暫停中（到 %s），不開新倉", self._local(shock_until))
+                elif block == "event":
+                    ev = guards.event_in_window(self.cfg, bar_close, self.events)
+                    log.warning("有進場訊號，但接近重大事件「%s」（%s），不開新倉", ev.name, self._local(ev.when))
+                else:
+                    self.buy(price, last["atr"])
 
         self._save_state()
 

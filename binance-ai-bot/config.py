@@ -39,6 +39,14 @@ class Config:
     max_consecutive_losses: int = _i("MAX_CONSECUTIVE_LOSSES", 4)
     fee_rate: float = _f("FEE_RATE", 0.001)
 
+    # A. 異常波動暫停
+    shock_atr_mult: float = _f("SHOCK_ATR_MULT", 3.0)
+    shock_pause_hours: float = _f("SHOCK_PAUSE_HOURS", 6)
+    # B. 重大事件避開
+    events_file: str = os.getenv("EVENTS_FILE", "events.csv")
+    event_before_hours: float = _f("EVENT_BEFORE_HOURS", 2)
+    event_after_hours: float = _f("EVENT_AFTER_HOURS", 2)
+
     paper_start_balance: float = _f("PAPER_START_BALANCE", 1000)
     poll_seconds: int = _i("POLL_SECONDS", 60)
 
@@ -57,6 +65,10 @@ class Config:
             raise ValueError("RISK_PER_TRADE 建議介於 0 ~ 0.05（單筆最多虧 5%）")
         if self.exit_proba >= self.entry_proba:
             raise ValueError("EXIT_PROBA 必須小於 ENTRY_PROBA")
+        if self.shock_atr_mult < 0 or self.shock_pause_hours < 0:
+            raise ValueError("SHOCK_ATR_MULT / SHOCK_PAUSE_HOURS 不能是負數")
+        if self.event_before_hours < 0 or self.event_after_hours < 0:
+            raise ValueError("EVENT_BEFORE_HOURS / EVENT_AFTER_HOURS 不能是負數")
 
     @property
     def base_asset(self) -> str:

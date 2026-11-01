@@ -1,17 +1,21 @@
-"""回測：前段資料訓練模型，後段資料（模型沒看過）模擬交易，含手續費與滑價。"""
+"""回測：前段資料訓練模型，後段資料（模型沒看過）模擬交易，含手續費與滑價。
+
+同一個模型會模擬兩次：開啟防護（A 異常波動暫停、B 重大事件避開）與關閉防護，方便比較效果。
+"""
 import ccxt
 import numpy as np
 import pandas as pd
 
 from config import Config
 from features import FEATURE_COLUMNS, add_features
+from guards import Event, entry_block_reason, is_shock, shock_pause_until
 from model import build_model, prepare_dataset
 from strategy import Position, entry_signal, exit_reason, position_size, trail_stop
 
 SLIPPAGE = 0.0005
 
 
-def run_backtest(cfg: Config, ohlcv: pd.DataFrame, train_ratio: float = 0.7) -> dict:
+def run_backtest(cfg: Config, ohlcv: pd.DataFrame, events: list[Event], train_ratio: float = 0.7) -> dict:
     split = int(len(ohlcv) * train_ratio)
     train_raw = ohlcv.iloc[:split]
     X, y, _ = prepare_dataset(train_raw, cfg.horizon, cfg.fee_rate)
@@ -22,11 +26,24 @@ def run_backtest(cfg: Config, ohlcv: pd.DataFrame, train_ratio: float = 0.7) -> 
     feats = add_features(ohlcv).iloc[split:].dropna(subset=FEATURE_COLUMNS)
     proba = model.predict_proba(feats[FEATURE_COLUMNS])[:, 1]
 
+    period = feats.index[0], feats.index[-1]
+    events_in_period = [e for e in events if period[0] <= e.when <= period[1]]
+    return {
+        "with_guards": simulate(cfg, feats, proba, events, guards=True),
+        "without_guards": simulate(cfg, feats, proba, events, guards=False),
+        "events_in_period": len(events_in_period),
+    }
+
+
+def simulate(cfg: Config, feats: pd.DataFrame, proba: np.ndarray, events: list[Event], guards: bool) -> dict:
+    tf = pd.Timedelta(seconds=ccxt.Exchange.parse_timeframe(cfg.timeframe))
     cash = cfg.paper_start_balance
     pos: Position | None = None
     pending_entry = False
     trades, equity_curve = [], []
     day, day_start_equity = None, cash
+    shock_until = None
+    blocked = {"shock": 0, "event": 0}
 
     for i, (ts, bar) in enumerate(feats.iterrows()):
         equity_open = cash + (pos.qty * bar["open"] if pos else 0)
@@ -66,13 +83,24 @@ def run_backtest(cfg: Config, ohlcv: pd.DataFrame, train_ratio: float = 0.7) -> 
                 trail_stop(cfg, pos, bar["close"], bar["atr"])
 
         # 3) 收盤判斷是否進場（順勢過濾：價格在 EMA50 之上才做多）
+        #    K 棒時間是開盤時間，收盤 = ts + 一根週期，也就是實盤下單的時間點
+        bar_close = ts + tf
+        if guards and is_shock(cfg, bar["shock_ratio"]):
+            shock_until = shock_pause_until(cfg, bar_close)
         if pos is None and entry_signal(cfg, proba[i], bar["ema_ratio_50"] > 0):
-            pending_entry = True
+            block = entry_block_reason(cfg, bar_close, shock_until, events) if guards else None
+            if block:
+                blocked[block] += 1
+            else:
+                pending_entry = True
 
         equity_curve.append(cash + (pos.qty * bar["close"] if pos else 0))
 
     eq = pd.Series(equity_curve, index=feats.index)
-    return summarize(cfg, eq, trades, feats["close"])
+    result = summarize(cfg, eq, trades, feats["close"])
+    if guards:
+        result["blocked_entries"] = blocked
+    return result
 
 
 def summarize(cfg: Config, eq: pd.Series, trades: list, close: pd.Series) -> dict:

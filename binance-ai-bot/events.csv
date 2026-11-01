@@ -1,0 +1,54 @@
+# 重大事件清單（B. 重大事件避開）：事件前後幾小時不開新倉，時間範圍在 .env 設定
+# 格式：datetime（當地時間 YYYY-MM-DD HH:MM）, timezone, name
+# timezone 用 America/New_York 時，美國夏令／冬令時間會自動換算，不用自己算台灣時間
+# 要用台灣時間填寫，timezone 就寫 Asia/Taipei
+#
+# 資料來源（2026-11-01 查證）：
+#   FOMC：https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm（每次會議第二天 14:00 ET 公布決議）
+#   CPI ：https://www.bls.gov/schedule/news_release/cpi.htm（08:30 ET 公布）
+# 注意：
+#   - 2026-02-13 CPI 原訂 02-11，因美國政府短暫停擺延後，此處為實際公布日
+#   - 2027 FOMC 為聯準會公布的暫定日程；聯準會表示 2027 秋季會有一次會議只討論政策架構、不公布利率決議，
+#     尚未說明是哪一次，所以 9/10/12 月都保留（多避開一次，影響很小）
+#   - 日程可能變動，建議每季到上面兩個網址核對一次
+datetime,timezone,name
+2026-01-13 08:30,America/New_York,美國 CPI 公布
+2026-01-28 14:00,America/New_York,FOMC 利率決議
+2026-02-13 08:30,America/New_York,美國 CPI 公布
+2026-03-11 08:30,America/New_York,美國 CPI 公布
+2026-03-18 14:00,America/New_York,FOMC 利率決議
+2026-04-10 08:30,America/New_York,美國 CPI 公布
+2026-04-29 14:00,America/New_York,FOMC 利率決議
+2026-05-12 08:30,America/New_York,美國 CPI 公布
+2026-06-10 08:30,America/New_York,美國 CPI 公布
+2026-06-17 14:00,America/New_York,FOMC 利率決議
+2026-07-14 08:30,America/New_York,美國 CPI 公布
+2026-07-29 14:00,America/New_York,FOMC 利率決議
+2026-08-12 08:30,America/New_York,美國 CPI 公布
+2026-09-11 08:30,America/New_York,美國 CPI 公布
+2026-09-16 14:00,America/New_York,FOMC 利率決議
+2026-10-14 08:30,America/New_York,美國 CPI 公布
+2026-10-28 14:00,America/New_York,FOMC 利率決議
+2026-11-10 08:30,America/New_York,美國 CPI 公布
+2026-12-09 14:00,America/New_York,FOMC 利率決議
+2026-12-10 08:30,America/New_York,美國 CPI 公布
+2027-01-13 08:30,America/New_York,美國 CPI 公布
+2027-01-27 14:00,America/New_York,FOMC 利率決議
+2027-02-11 08:30,America/New_York,美國 CPI 公布
+2027-03-10 08:30,America/New_York,美國 CPI 公布
+2027-03-17 14:00,America/New_York,FOMC 利率決議
+2027-04-13 08:30,America/New_York,美國 CPI 公布
+2027-04-28 14:00,America/New_York,FOMC 利率決議
+2027-05-12 08:30,America/New_York,美國 CPI 公布
+2027-06-09 14:00,America/New_York,FOMC 利率決議
+2027-06-10 08:30,America/New_York,美國 CPI 公布
+2027-07-14 08:30,America/New_York,美國 CPI 公布
+2027-07-28 14:00,America/New_York,FOMC 利率決議
+2027-08-11 08:30,America/New_York,美國 CPI 公布
+2027-09-14 08:30,America/New_York,美國 CPI 公布
+2027-09-15 14:00,America/New_York,FOMC 利率決議
+2027-10-14 08:30,America/New_York,美國 CPI 公布
+2027-10-27 14:00,America/New_York,FOMC 利率決議
+2027-11-10 08:30,America/New_York,美國 CPI 公布
+2027-12-08 14:00,America/New_York,FOMC 利率決議
+2027-12-10 08:30,America/New_York,美國 CPI 公布
