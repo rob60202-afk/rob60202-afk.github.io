@@ -15,7 +15,7 @@
   "shippingMethod": "新竹物流",
   "autoSubmit": true,
   "targetPrice": 11,
-  "chromeChannel": "",
+  "chromeChannel": "chrome",
   "selectors": {
     "buyNow": [
       "exact=立即搶購",

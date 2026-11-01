@@ -87,14 +87,22 @@ async function beep(page) {
 }
 
 async function openBrowser(cfg) {
-  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: process.env.HEADLESS === '1',
-    viewport: null,
-    locale: 'zh-TW',
-    args: ['--start-maximized'],
-    ...(cfg.chromeChannel ? { channel: cfg.chromeChannel } : {}),
-  });
+  const options = { headless: process.env.HEADLESS === '1', viewport: null, locale: 'zh-TW', args: ['--start-maximized'] };
+  let ctx = null;
+  let kind = '內建瀏覽器';
+  if (cfg.chromeChannel) {
+    // 用你電腦上安裝的 Google Chrome；登入狀態存在 profile-chrome，跟內建瀏覽器分開，所以第一次要重新登入
+    try {
+      ctx = await chromium.launchPersistentContext(`${PROFILE_DIR}-${cfg.chromeChannel}`, { ...options, channel: cfg.chromeChannel });
+      kind = '你電腦上的 Google Chrome';
+    } catch (e) {
+      log(`找不到你電腦上的 Google Chrome，改用內建瀏覽器（${e.message.split('\n')[0].slice(0, 80)}）`);
+    }
+  }
+  ctx = ctx || (await chromium.launchPersistentContext(PROFILE_DIR, options));
   const page = ctx.pages()[0] || (await ctx.newPage());
+  const version = await page.evaluate(() => (navigator.userAgent.match(/Chrome\/[\d.]+/) || [''])[0]).catch(() => '');
+  log(`使用瀏覽器：${kind} ${version}`);
   return { ctx, page };
 }
 
@@ -107,11 +115,20 @@ async function cmdLogin(cfg) {
 
 async function cmdCheck(cfg) {
   const { ctx, page } = await openBrowser(cfg);
+  // 記錄網頁載入時的錯誤，商品頁空白時用來判斷原因
+  const problems = [];
+  page.on('pageerror', (e) => problems.push(`JS 錯誤：${e.message}`));
+  page.on('console', (m) => m.type() === 'error' && problems.push(`主控台錯誤：${m.text()}`));
+  page.on('response', (r) => r.status() >= 400 && problems.push(`HTTP ${r.status()}：${r.url()}`));
   const res = await page.goto(await resolveProductUrl(page, cfg), { waitUntil: 'domcontentloaded' });
   await sleep(2000);
   const title = await page.title();
   log(`商品頁：HTTP ${res ? res.status() : '?'}，分頁標題「${title}」`);
   if (isErrorTitle(title)) log('✘ 商品頁顯示「發生錯誤」：程式開的瀏覽器看不到商品，請把這個視窗和瀏覽器截圖給 Claude');
+  const shown = cfg.productName
+    ? await page.getByText(new RegExp(cfg.productName)).filter({ visible: true }).first().waitFor({ timeout: 5000 }).then(() => true, () => false)
+    : true;
+  log(`商品內容：${shown ? '✔ 有顯示' : '✘ 沒顯示（頁面空白），程式買不到，請截圖給 Claude'}`);
   const s = cfg.selectors;
   for (const name of ['buyNow', 'addToCart', 'soldOut', 'quantityInput']) {
     const list = s[name] || [];
@@ -125,6 +142,10 @@ async function cmdCheck(cfg) {
   {
     const state = await cartState(page, cfg);
     log(`購物車：${{ empty: '✔ 空的', items: '⚠ 目前有商品，開賣前請清空（否則不會自動送出）', error: `✘ 購物車網址打不開（${cfg.cartUrl}），請確認 cartUrl`, unknown: '請自己確認是空的（結帳頁另有商品核對保護）' }[state]}`);
+  }
+  if (problems.length) {
+    log('網頁載入時的錯誤紀錄（給 Claude 判斷用）：');
+    for (const p of [...new Set(problems)].slice(0, 8)) console.log(`    ${p.slice(0, 150)}`);
   }
   log('檢查完畢，瀏覽器保留讓你對照，關掉即可結束。');
   await new Promise((r) => ctx.on('close', r));
