@@ -13,7 +13,9 @@
   "couponCode": "",
   "paymentMethod": "貨到付款",
   "shippingMethod": "新竹物流",
-  "autoSubmit": false,
+  "autoSubmit": true,
+  "targetPrice": 11,
+  "maxOrderAmount": 1000,
   "chromeChannel": "",
   "selectors": {
     "buyNow": [

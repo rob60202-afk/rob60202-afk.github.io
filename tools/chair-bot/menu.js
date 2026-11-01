@@ -12,7 +12,7 @@ const TARGETS = [
   ['11/11  11:00  C300 二代 Pro 沐雲白', '1111-1100-c300-white'],
   ['11/11  23:00  C300 二代 Pro 曜石黑', '1111-2300-c300-black'],
 ];
-const ACTIONS = { L: 'login', C: 'check', R: 'run' };
+const ACTIONS = { L: ['login'], C: ['check'], R: ['run'], M: ['run', '--no-submit'] };
 
 // 每次提問都開新的 readline 再關掉，執行 bot.js 時才不會搶走 Ctrl+C
 async function ask(question) {
@@ -35,15 +35,13 @@ async function ask(question) {
     console.log(`\n========== ${target[0]}：選擇動作 ==========`);
     console.log(' L. 登入會員：第一次必做，登入完成後關掉瀏覽器');
     console.log(' C. 檢查：確認按鈕抓不抓得到，不會下單');
-    console.log(' R. 開始搶購：開賣前 10 分鐘執行');
-    const cmd = ACTIONS[(await ask('請輸入 L / C / R 後按 Enter：')).toUpperCase()];
-    if (!cmd) continue;
+    console.log(' R. 開始搶購（自動下單）：開賣前 10 分鐘執行。結帳頁確認是 NT$11、只有這張椅子、貨到付款，就直接送出');
+    console.log(' M. 開始搶購（不自動下單）：停在結帳頁，由你自己按送出');
+    const action = ACTIONS[(await ask('請輸入 L / C / R / M 後按 Enter：')).toUpperCase()];
+    if (!action) continue;
 
-    const args = [path.join(__dirname, 'bot.js'), cmd, path.join(__dirname, 'targets', `${target[1]}.json`)];
-    if (cmd === 'run') {
-      console.log('\n到了結帳頁要「自動送出訂單」嗎？（貨到付款，不經信用卡；購物車有其他商品時會自動取消）');
-      if ((await ask('輸入 Y = 自動送出，N = 停在結帳頁由我按：')).toUpperCase() === 'Y') args.push('--submit');
-    }
+    const [cmd, ...flags] = action;
+    const args = [path.join(__dirname, 'bot.js'), cmd, path.join(__dirname, 'targets', `${target[1]}.json`), ...flags];
     spawnSync(process.execPath, args, { stdio: 'inherit' });
     await ask('\n按 Enter 回到選單');
   }
