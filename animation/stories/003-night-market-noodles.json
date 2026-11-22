@@ -1,0 +1,52 @@
+{
+  "id": "003-night-market-noodles",
+  "title": "夜市麵攤老闆娘,為什麼永遠多煮一碗",
+  "description": "麵攤每天收攤前都會多煮一碗沒人點的麵。女兒覺得浪費,直到她自己接手的那一天。",
+  "tags": ["故事", "勵志故事", "人生故事", "動畫故事", "親情"],
+  "lang": "zh-TW",
+  "seed": 6391,
+  "style": "adorable chibi characters with big round heads and small bodies, rosy cheeks, big expressive eyes, soft storybook picture book style, gentle watercolor textures, warm lantern orange and deep teal night tones, cozy lighting, cinematic wide composition, no text, no letters, no watermark",
+  "characters": {
+    "MOTHER": "a sturdy Taiwanese woman in her fifties with hair tied in a bun, a flower-patterned apron and rolled-up sleeves",
+    "DAUGHTER": "a Taiwanese woman in her twenties with a short bob haircut wearing a grey hoodie",
+    "WORKER": "a thin elderly Taiwanese man in a worn reflective vest and a faded cap"
+  },
+  "scenes": [
+    {
+      "narration": "阿滿的麵攤開了二十五年。每天收攤前,她都會多煮一碗麵,放在最角落的那張桌子上。",
+      "image": "MOTHER placing a steaming bowl of noodles on a small empty table at the corner of a night market noodle stall, lanterns glowing"
+    },
+    {
+      "narration": "女兒小芸從小就不懂。那碗麵沒有人點,也沒有人付錢,為什麼天天都要煮?",
+      "image": "DAUGHTER washing bowls behind the noodle stall and looking puzzled at the lone bowl of noodles on the corner table"
+    },
+    {
+      "narration": "媽媽只說:會有人來吃的。果然,每天半夜,都有一個掃街的老伯,安靜地坐下來把它吃完。",
+      "image": "WORKER sitting alone at the corner table quietly eating the bowl of noodles late at night, his broom leaning against the table"
+    },
+    {
+      "narration": "小芸算過,二十五年,那是九千多碗麵。她覺得媽媽太傻,生意哪有這樣做的。",
+      "image": "DAUGHTER sitting at a table with a notebook and calculator, frowning, the noodle stall and steam in the background"
+    },
+    {
+      "narration": "後來媽媽病倒了,麵攤交給小芸。第一天晚上,她猶豫了很久,還是沒有煮那一碗。",
+      "image": "DAUGHTER standing alone behind the noodle stall at closing time looking at the empty corner table, lanterns dimming"
+    },
+    {
+      "narration": "半夜,老伯來了。看到空空的桌子,他沒有說話,只是把攤子前面的地,仔仔細細掃了一遍。",
+      "image": "WORKER carefully sweeping the ground in front of the closed noodle stall under a street lamp, DAUGHTER watching from the shadows"
+    },
+    {
+      "narration": "小芸這才發現,二十五年來,攤子前面永遠是整條夜市最乾淨的地方。",
+      "image": "wide view of a night market street at dawn, the area in front of one noodle stall spotless while the rest of the street is littered"
+    },
+    {
+      "narration": "媽媽後來告訴她:他從來不肯白吃,我也從來不讓他餓著。這不是做生意,這是做人。",
+      "image": "MOTHER resting in a chair at home with a blanket on her lap, speaking gently to DAUGHTER who kneels beside her holding her hand"
+    },
+    {
+      "narration": "第二天收攤前,角落那張桌子上,又多了一碗麵。有些帳,本來就不是用錢在算的。",
+      "image": "DAUGHTER wearing the flower-patterned apron placing a steaming bowl of noodles on the corner table, WORKER approaching in the distance with his broom"
+    }
+  ]
+}

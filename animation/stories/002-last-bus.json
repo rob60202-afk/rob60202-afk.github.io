@@ -1,0 +1,52 @@
+{
+  "id": "002-last-bus",
+  "title": "末班車司機每天多等的那兩分鐘",
+  "description": "一位公車司機,每晚在同一站多等兩分鐘。二十年後,有人上車告訴他為什麼這兩分鐘很重要。",
+  "tags": ["故事", "勵志故事", "人生故事", "動畫故事", "暖心"],
+  "lang": "zh-TW",
+  "seed": 5108,
+  "style": "adorable chibi characters with big round heads and small bodies, rosy cheeks, big expressive eyes, soft storybook picture book style, gentle watercolor textures, deep blue night tones with warm yellow light, cozy lighting, cinematic wide composition, no text, no letters, no watermark",
+  "characters": {
+    "DRIVER": "a stocky middle-aged Taiwanese bus driver with a crew cut, a light blue uniform shirt and white gloves",
+    "GIRL": "a thin Taiwanese high school girl with a ponytail, a navy school uniform and a heavy backpack",
+    "WOMAN": "a Taiwanese woman in her late thirties with shoulder-length hair wearing a white doctor's coat over plain clothes"
+  },
+  "scenes": [
+    {
+      "narration": "老周開了三十年的末班車。每天晚上十點四十,他都會在醫院那一站,多等兩分鐘。",
+      "image": "an old city bus stopped at a bus stop in front of a hospital at night, DRIVER looking at his wristwatch, warm light inside the bus"
+    },
+    {
+      "narration": "公司罵過他,乘客也抱怨過。他只說:再等一下,有人還沒到。",
+      "image": "DRIVER sitting calmly at the steering wheel while two tired passengers in the bus look impatient, night outside the windows"
+    },
+    {
+      "narration": "那個人,是一個補習完總是用跑的女孩。她家很遠,錯過這班,就要走一個半小時的夜路。",
+      "image": "GIRL running hard along a dark sidewalk toward the lit bus stop, the bus waiting with its door open"
+    },
+    {
+      "narration": "女孩每次上車都喘著說謝謝。老周總是擺擺手:沒有等你,是我錶慢了。",
+      "image": "GIRL out of breath stepping onto the bus and bowing slightly, DRIVER waving his gloved hand with a small smile"
+    },
+    {
+      "narration": "三年後女孩畢業了,那一站再也沒有人用跑的。老周還是習慣停兩分鐘,看看後照鏡。",
+      "image": "DRIVER looking into the side mirror of the bus at an empty dark sidewalk near the hospital bus stop, quiet night"
+    },
+    {
+      "narration": "二十年過去,老周最後一天上班。末班車開到醫院站,一個穿白袍的人站在那裡等他。",
+      "image": "WOMAN standing under the bus stop light in front of the hospital holding a small bouquet, the old bus arriving at night"
+    },
+    {
+      "narration": "她上了車,笑著說:周叔叔,我現在在這間醫院值夜班。這次換我等你。",
+      "image": "WOMAN stepping onto the bus and smiling at DRIVER who now has grey hair and looks surprised, warm light inside the bus"
+    },
+    {
+      "narration": "她說,當年要是沒有那兩分鐘,她早就不補習了,也不會考上醫學院。",
+      "image": "WOMAN sitting in the front seat talking, DRIVER with grey hair listening with wet eyes while holding the steering wheel"
+    },
+    {
+      "narration": "你隨手多等的兩分鐘,可能是別人撐下去的理由。別小看你做得到的那一點點。",
+      "image": "the old bus driving away down a quiet night street toward the first light of dawn, seen from behind, city lights glowing softly"
+    }
+  ]
+}
