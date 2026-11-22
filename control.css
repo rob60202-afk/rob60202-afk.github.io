@@ -262,3 +262,6 @@
 @media (max-width: 520px) { .c-sync { position: fixed; left: 12px; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 56; background: var(--paper); border: 1px solid var(--line); } }
 
 .c-btn[hidden], .c-sync[hidden] { display: none !important; }
+
+.c-gantt-note { margin: 6px 0 0; color: var(--muted); font-size: .76rem; line-height: 1.5; }
+.c-gantt-row .c-bar { max-width: 320px; }
