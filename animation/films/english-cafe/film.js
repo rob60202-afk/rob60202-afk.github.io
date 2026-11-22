@@ -140,6 +140,14 @@
     zh(ctx, l.zh, 0, size * 1.12, 58, '#FFF4D6');
     ctx.restore();
   }
+  function narration(ctx, t) { // 中文旁白字幕(開場那句已有標題卡,結尾有結尾卡)
+    const i = L.findIndex((l, k) => l.type === 'hook' && k > 0 && t >= A[k] - 0.05 && t < E[k] + 0.25);
+    if (i < 0) return;
+    const pop = ease.outBack(clamp((t - A[i] + 0.05) / 0.22));
+    ctx.save(); ctx.translate(SAFE.x + SAFE.w / 2, SAFE.y + SAFE.h - 170); ctx.scale(pop, pop);
+    zh(ctx, L[i].zh.replace(/[,。]/g, ' ').trim(), 0, 0, 76, YELLOW);
+    ctx.restore();
+  }
   function keyCard(ctx, t) { // 重點句卡片 + 跟唸倒數
     if (t < ev.card || t > ev.end + 0.25) return;
     const l = L[key];
@@ -188,7 +196,7 @@
       ctx.save(); ctx.translate(540, FLOOR); ctx.scale(z, z); ctx.translate(-540, -FLOOR);
       scene(ctx, t);
       ctx.restore();
-      title(ctx, t); keyCard(ctx, t); dialog(ctx, t); ending(ctx, t);
+      title(ctx, t); keyCard(ctx, t); dialog(ctx, t); narration(ctx, t); ending(ctx, t);
     },
   });
 })();
