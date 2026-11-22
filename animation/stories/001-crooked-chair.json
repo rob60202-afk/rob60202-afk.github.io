@@ -1,0 +1,52 @@
+{
+  "id": "001-crooked-chair",
+  "title": "師傅坐了三十年的那張歪椅子",
+  "description": "學徒做壞的第一張椅子,師傅為什麼坐了三十年?一個關於起步的小故事。",
+  "tags": ["故事", "勵志故事", "人生故事", "動畫故事", "職人"],
+  "lang": "zh-TW",
+  "seed": 4217,
+  "style": "soft watercolor storybook illustration, warm muted earth tones, gentle golden light, hand-painted texture, cinematic wide composition, no text, no letters, no watermark",
+  "characters": {
+    "MASTER": "an elderly Taiwanese carpenter with short grey hair, thin round glasses and a faded indigo apron",
+    "BOY": "a skinny sixteen-year-old Taiwanese apprentice boy with messy black hair and a plain white shirt",
+    "MAN": "a middle-aged Taiwanese carpenter with short black hair touched with grey, wearing a faded indigo apron"
+  },
+  "scenes": [
+    {
+      "narration": "阿樹十六歲那年,做出了人生第一張椅子。四隻腳,有一隻短了半公分。",
+      "image": "BOY kneeling on the floor of a small old woodshop, staring at a simple wooden chair that leans slightly to one side, wood shavings on the floor"
+    },
+    {
+      "narration": "他紅著臉,想趁師傅沒看到,把它劈了當柴燒。",
+      "image": "BOY nervously carrying the crooked wooden chair toward a firewood pile behind the woodshop at dusk, looking over his shoulder"
+    },
+    {
+      "narration": "師傅卻把椅子接了過去,放在店門口,坐了下來。椅子晃了一下,師傅什麼也沒說。",
+      "image": "MASTER sitting calmly on the slightly crooked wooden chair at the entrance of a small woodshop on an old street, BOY watching from inside the doorway"
+    },
+    {
+      "narration": "從那天起,師傅每天都坐那張椅子。客人笑它歪,阿樹每看一次,就難受一次。",
+      "image": "MASTER sitting on the crooked chair outside the woodshop drinking tea while two passing customers smile and point at the chair, BOY in the background looking down"
+    },
+    {
+      "narration": "於是他拼命練。十年後,他做的椅子,整條街都搶著訂。可是門口那張歪椅子,師傅始終不肯換。",
+      "image": "MAN in his late twenties working with intense focus at a workbench surrounded by many beautifully finished wooden chairs, warm lamp light, the old crooked chair visible by the open door"
+    },
+    {
+      "narration": "三十年後,師傅要退休了。阿樹終於忍不住問:您為什麼,偏偏要坐我做得最差的那一張?",
+      "image": "MAN standing beside MASTER who is very old now with white hair, both next to the worn crooked chair at the woodshop entrance, late afternoon light"
+    },
+    {
+      "narration": "師傅摸著椅背笑了:這張椅子我坐了三十年,它從來沒有垮過。歪,不代表不能用。",
+      "image": "close view of the very old MASTER with white hair smiling gently, his wrinkled hand resting on the worn backrest of the crooked wooden chair"
+    },
+    {
+      "narration": "而且每次看到它,我就想起來,再厲害的師傅,都是從歪的那一張開始的。",
+      "image": "the old crooked wooden chair alone in a beam of golden sunlight at the woodshop entrance, a row of perfect chairs softly blurred in the background"
+    },
+    {
+      "narration": "如果你現在做的東西還很歪,別急著把它燒掉。那是你的第一張椅子。",
+      "image": "MAN now the shop owner placing the old crooked chair at the entrance in morning light while a new young apprentice watches from the workbench"
+    }
+  ]
+}
