@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""讓動畫引擎以為這是 piper 語音引擎,實際用 Google 語音(gTTS)產生配音。"""
+"""讓動畫引擎以為這是 piper 語音引擎,實際用 Google 語音(gTTS)產生配音。
+
+--model 的寫法:語言[,pitch=音高倍率][,speed=語速倍率][,slow]
+例:zh-TW、en,pitch=0.88、en,slow
+"""
 import subprocess, sys, tempfile, os
 args = sys.argv[1:]
 if "--help" in args or not args:
     print("piper shim (gTTS)"); sys.exit(0)
-lang = args[args.index("--model") + 1] if "--model" in args else "zh-TW"
+spec = (args[args.index("--model") + 1] if "--model" in args else "zh-TW").split(",")
+lang, opts = spec[0], dict(o.split("=") if "=" in o else (o, "1") for o in spec[1:])
 out = args[args.index("--output_file") + 1]
 text = sys.stdin.read().strip()
+pitch = float(opts.get("pitch", 1))
+speed = float(opts.get("speed", os.environ.get("VOICE_SPEED", "1.25") if lang.startswith("zh") else 1.0))
 from gtts import gTTS
 with tempfile.TemporaryDirectory() as tmp:
     mp3 = os.path.join(tmp, "v.mp3")
-    gTTS(text, lang=lang).save(mp3)
-    speed = os.environ.get("VOICE_SPEED", "1.25")
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", mp3, "-af", f"atempo={speed}",
-                    "-ar", "48000", "-ac", "1", out], check=True)
+    gTTS(text, lang=lang, slow="slow" in opts).save(mp3)
+    # 改音高:先改取樣率(音高與速度一起變),再用 atempo 把速度調回來
+    af = f"asetrate=24000*{pitch},aresample=48000,atempo={speed / pitch:.4f}"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", mp3, "-af", af, "-ar", "48000", "-ac", "1", out], check=True)
