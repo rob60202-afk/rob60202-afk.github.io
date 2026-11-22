@@ -167,7 +167,7 @@
 .c-ring .fill { stroke: var(--ink); }
 .c-ring text { font: 700 22px "Space Grotesk", sans-serif; fill: var(--ink); }
 
-.c-steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.c-steps { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
 .c-steps li { padding-top: 8px; border-top: 4px solid rgba(10,20,33,.12); color: var(--muted); font-size: .74rem; font-weight: 700; line-height: 1.4; }
 .c-steps li span { display: block; font: 600 .68rem "Space Grotesk", sans-serif; }
 .c-steps li.done { border-color: var(--ink); color: var(--ink); }
@@ -232,6 +232,21 @@
   .c-project { padding: 16px; }
   .c-project-main { gap: 14px; }
   .c-project dl div { grid-template-columns: 1fr; gap: 0; }
-  .c-steps { grid-template-columns: repeat(3, 1fr); gap: 8px 4px; }
+  .c-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 4px; }
 }
 @media print { .c-fab, .c-chips, .c-tabs { display: none !important; } }
+
+/* 送審與日期 */
+:is(.c-stack b, .c-legend i).s-ok { background: var(--ok); } :is(.c-stack b, .c-legend i).s-warn { background: var(--warn); } :is(.c-stack b, .c-legend i).s-bad { background: var(--bad); } :is(.c-stack b, .c-legend i).s-mute { background: var(--todo); }
+.c-no { font: 600 .78rem "Space Grotesk", sans-serif; color: var(--muted); margin-right: 4px; }
+.c-filters input[type="search"] { flex: 2; min-width: 180px; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: .88rem; }
+.c-table tr[hidden] { display: none !important; }
+.c-table td a { text-decoration: underline; white-space: nowrap; }
+.c-events { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.c-events li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
+.c-events li:hover { border-color: var(--ink); }
+.c-events time { font: 700 1.05rem "Space Grotesk", sans-serif; }
+.c-events strong { display: block; font-size: .9rem; line-height: 1.4; }
+.c-events span { color: var(--muted); font-size: .76rem; }
+.c-empty.c-panel { margin: 0; }
+@media (max-width: 640px) { .c-filters input[type="search"] { flex: 1 1 100%; min-height: 44px; font-size: 1rem; } }
