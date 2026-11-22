@@ -203,15 +203,16 @@
   function lesson(ctx, t) { // 7–8:師傅給他一張紙
     site(ctx, t);
     const give = t >= ev.paper, m = mouthOf('master', t);
-    Ch.person(ctx, { x: 300, y: GROUND, s: 1.4, pose: 'stand', style: CAST.master, gesture: give ? 'point' : undefined, eyes: m ? 'normal' : 'happy', mouth: m || 'smile', look: 0.8, blink: blink(t, 0.6), blush: 0.4, seed: 440 });
-    Ch.person(ctx, { x: 770, y: GROUND, s: 1.3, sx: -1, pose: 'stand', style: CAST.shuSite, eyes: give ? 'wide' : 'closed', mouth: give ? 'o' : 'wavy', brows: give ? 'up' : 'worried', look: 0.8, headRot: give ? 0 : 0.1, blush: 0.6, blink: blink(t, 0.2), seed: 400 });
+    const k = ease.inOutCubic(clamp((t - ev.paper) / 0.4)); // 檢核表出現時,兩人退到下方兩側
+    Ch.person(ctx, { x: lerp(300, 215, k), y: GROUND + 150 * k, s: lerp(1.4, 1.0, k), pose: 'stand', style: CAST.master, gesture: give ? 'point' : undefined, eyes: m ? 'normal' : 'happy', mouth: m || 'smile', look: 0.8, blink: blink(t, 0.6), blush: 0.4, seed: 440 });
+    Ch.person(ctx, { x: lerp(770, 865, k), y: GROUND + 150 * k, s: lerp(1.3, 0.95, k), sx: -1, pose: 'stand', style: CAST.shuSite, eyes: give ? 'wide' : 'closed', mouth: give ? 'o' : 'wavy', brows: give ? 'up' : 'worried', look: 0.8, headRot: give ? 0 : 0.1, blush: 0.6, blink: blink(t, 0.2), seed: 400 });
     if (give) { // 密密麻麻的檢核表
       const a = popIn(t, ev.paper, 0.35);
-      ctx.save(); ctx.translate(540, 215 + (1 - a) * 80); ctx.rotate(0.03); ctx.scale(a * 0.76, a * 0.76);
+      ctx.save(); ctx.translate(540, 205 + (1 - a) * 80); ctx.rotate(0.02); ctx.scale(a * 1.02, a * 1.02);
       G.tornPaper(ctx, -250, 0, 500, 560, { fill: '#FFF6D8', seed: 701 });
       G.decor(() => {
         label(ctx, '漏項檢核表', 0, 72, 56, INK);
-        const items = ['高空作業車', '搬運吊裝', '保護清潔', '測試檢驗', '送審文件', '等待工時'];
+        const items = ['高空作業車', '搬運吊裝', '保護清潔', '測試檢驗', '舊管銜接停氣', '送審文件'];
         items.forEach((it, k) => {
           const on = t >= ev.paper + 0.5 + k * 0.32; if (!on) return;
           const yy = 150 + k * 66;
