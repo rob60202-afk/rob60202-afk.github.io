@@ -1,6 +1,6 @@
 {
-  "name": "專案管控台",
-  "short_name": "管控台",
+  "name": "氫氣專案入口",
+  "short_name": "專案入口",
   "start_url": "control.html",
   "scope": "./",
   "display": "standalone",
