@@ -159,7 +159,7 @@
   function watch(ctx, t) { // 2:看看時間,「應該不會漏吧」
     fab(ctx, t, 'dusk');
     const think = t >= ev.think, m = think ? mouthOf('shu', t) : null, smug = t >= E[2] - 0.15;
-    const px = 400, py = 1380, s = 1.7;
+    const px = 350, py = 1380, s = 1.7;
     Ch.person(ctx, { x: px, y: py, s, pose: 'stand', style: CAST.shuSite, gesture: think ? 'shrug' : undefined, handL: think ? undefined : [-26, -322 + 52],
       eyes: smug ? 'happy' : 'normal', mouth: smug ? 'smirk' : m || (think ? 'smile' : 'flat'), brows: think ? 'up' : 'worried', look: think ? 0.7 : -0.25, lookY: think ? 0 : 0.8, headRot: think ? 0.04 : -0.05,
       sweat: think ? 0 : 0.5, blush: 0.5, blink: blink(t, 0.2), seed: 400 });
@@ -170,7 +170,7 @@
     // 放大的手錶
     const a = think ? 1 - clamp((t - ev.think) / 0.2) : popIn(t, A[2] + 0.15, 0.3);
     if (a > 0.01) {
-      ctx.save(); ctx.translate(690, 560); ctx.scale(a, a); ctx.rotate(0.08);
+      ctx.save(); ctx.translate(735, 600); ctx.scale(a, a); ctx.rotate(0.08);
       G.rrect(ctx, -46, -190, 92, 380, 16, { fill: '#5A4A3C', lw: 5, seed: 52 });
       G.ellipse(ctx, 0, 0, 122, 122, { fill: '#8A8F98', lw: 6, seed: 53 });
       G.ellipse(ctx, 0, 0, 102, 102, { fill: '#FFFDF4', lw: 4, seed: 54 });
