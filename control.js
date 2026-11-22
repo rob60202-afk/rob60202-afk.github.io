@@ -12,6 +12,7 @@
   const money = (n) => (Number(n) || 0).toLocaleString('zh-TW');
   const pct = (a, b) => (Number(b) > 0 ? Math.round((Number(a) / Number(b)) * 100) : 0);
   const safeUrl = (u) => (/^https?:\/\//i.test(u || '') ? u : '');
+  const linkBtn = (u, label) => (safeUrl(u) ? `<a class="c-btn small" href="${esc(safeUrl(u))}" target="_blank" rel="noopener noreferrer">${label} ↗</a>` : '');
 
   const PHASES = ['設計審圖', '採購備料', '施工配管', '測試檢驗', '試車驗收', '結案請款'];
   const TASK_STATUS = ['待辦', '進行中', '卡關', '完成'];
@@ -287,7 +288,7 @@
         const detail = [x.status && x.status !== SUB_LABEL[st] ? x.status : '', x.note].filter(Boolean).join('｜');
         return `<tr data-edit="submittals" data-id="${x.id}" data-state="${st}" data-pending="${esc(x.pendingWith)}" data-text="${esc([x.no, x.title, x.category, x.status, x.note, x.pendingWith].join(' ').toLowerCase())}">
           <td class="wrap"><span class="c-no">${esc(x.no)}</span> ${esc(x.title)}</td><td>${esc(x.category || '—')}</td><td>${esc(x.rev || '—')}</td><td>${pill(SUB_LABEL[st], st)}</td>
-          <td>${esc(x.pendingWith || '—')}</td><td>${esc(x.submitDate || '—')}</td><td>${esc(x.replyDate || '—')}</td><td class="wrap">${esc(detail)}${u ? ` <a href="${esc(u)}" target="_blank" rel="noopener noreferrer">開啟 ↗</a>` : ''}</td></tr>`;
+          <td>${esc(x.pendingWith || '—')}</td><td>${esc(x.submitDate || '—')}</td><td>${esc(x.replyDate || '—')}</td><td class="wrap">${esc(detail)}</td><td class="links">${linkBtn(x.url, '最新版')}${linkBtn(x.folderUrl, '資料夾')}${x.fileNote && (u || safeUrl(x.folderUrl)) ? `<small>${esc(x.fileNote)}</small>` : ''}${!u && !safeUrl(x.folderUrl) ? '<span class="c-pill mute">未連結</span>' : ''}</td></tr>`;
       });
       const counts = subCounts(list);
       return `${head('送審管制', ['submittals', '新增送審'])}
@@ -299,7 +300,7 @@
           <select id="sub-pending" aria-label="依待辦方篩選"><option value="">全部待辦方</option>${uniq('pendingWith').map((v) => `<option>${esc(v)}</option>`).join('')}</select>
         </div>
         <p class="c-sub" id="sub-count" style="margin-bottom:8px">共 ${list.length} 件</p>
-        ${table(['文件', '類別', '版次', '狀態', '待辦方', '送審日', '回覆日', '現況與意見'], rows, '尚無送審文件。')}`;
+        ${table(['文件', '類別', '版次', '狀態', '待辦方', '送審日', '回覆日', '現況與意見', 'Drive 圖面'], rows, '尚無送審文件。')}`;
     },
 
     tasks(p, s) {
@@ -329,11 +330,8 @@
       const list = of('docs', p.id);
       const groups = DOC_TYPES.map((t) => [t, list.filter((d) => d.type === t)]).filter(([, l]) => l.length);
       return `${head('文件與圖面', ['docs', '新增文件'])}
-        <p class="c-sub" style="margin-bottom:12px">這裡只放文件名稱、版次與雲端連結，檔案本身仍放在公司的雲端硬碟。</p>
-        ${groups.map(([t, l]) => `<div class="c-panel c-doc-group"><h3>${t}</h3><ul class="c-docs">${l.map((d) => {
-          const u = safeUrl(d.url);
-          return `<li><button class="c-doc-main" data-edit="docs" data-id="${d.id}"><strong>${esc(d.title)}</strong>${d.rev ? `<span>${esc(d.rev)}</span>` : ''}</button>${u ? `<a class="c-btn small" href="${esc(u)}" target="_blank" rel="noopener noreferrer">開啟 ↗</a>` : '<span class="c-pill mute">未放連結</span>'}</li>`;
-        }).join('')}</ul></div>`).join('') || '<p class="c-empty">尚無文件。</p>'}`;
+        <p class="c-sub" style="margin-bottom:12px">各圖面與文件的最新版連結。「最新版」開啟檔案，「資料夾」開啟 Drive 上的歷次版本。需用有權限的 Google 帳號登入才看得到。</p>
+        ${groups.map(([t, l]) => `<div class="c-panel c-doc-group"><h3>${t}<span>${l.length}</span></h3><ul class="c-docs">${l.map((d) => `<li><button class="c-doc-main" data-edit="docs" data-id="${d.id}"><strong>${esc(d.title)}</strong><span>${[d.rev, d.date].filter(Boolean).map(esc).join('・')}</span>${d.note ? `<small>${esc(d.note)}</small>` : ''}</button><span class="c-doc-links">${linkBtn(d.url, '最新版')}${linkBtn(d.folderUrl, '資料夾')}${!safeUrl(d.url) && !safeUrl(d.folderUrl) ? '<span class="c-pill mute">未連結</span>' : ''}</span></li>`).join('')}</ul></div>`).join('') || '<p class="c-empty">尚無文件。</p>'}`;
     },
 
     contacts(p) {
@@ -535,14 +533,14 @@
       ['status', '狀態', 'select', sel(ISSUE_STATUS, '未結')], ['owner', '負責人', 'text', { list: true }], ['due', '預計解決日', 'date'], ['action', '對策與進展', 'textarea', { full: true }]] },
     docs: { label: '文件', fields: () => [
       ['title', '文件名稱', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['type', '類別', 'select', sel(DOC_TYPES, '圖面')],
-      ['rev', '版次', 'text'], ['url', '雲端連結（https://）', 'url', { full: true }]] },
+      ['rev', '版次', 'text'], ['date', '版本日期', 'date'], ['url', '最新版檔案的 Drive 連結', 'url', { full: true }], ['folderUrl', 'Drive 資料夾連結', 'url', { full: true }], ['note', '備註', 'text', { full: true }]] },
     contacts: { label: '窗口', fields: () => [
       ['name', '姓名或稱呼', 'text'], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['org', '單位（業主／包商／供應商）', 'text'], ['role', '職稱或角色', 'text'],
       ['phone', '電話', 'tel'], ['email', 'Email', 'email']] },
     submittals: { label: '送審文件', fields: () => [
       ['title', '文件名稱', 'text', { full: true, required: true }], ['no', '文件編號', 'text'], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['category', '類別', 'text'], ['rev', '版次', 'text'],
       ['state', '分類', 'select', { options: [['', '依現況文字自動判斷'], ...SUB_STATES] }], ['status', '現況說明（如：V3 會簽意見回覆中）', 'text', { full: true }], ['pendingWith', '待辦方（我方／業主／供應商）', 'text'], ['submitDate', '送審日', 'date'], ['replyDate', '回覆日', 'date'],
-      ['note', '會簽意見與備註', 'textarea', { full: true }], ['url', '雲端連結（https://）', 'url', { full: true }]] },
+      ['note', '會簽意見與備註', 'textarea', { full: true }], ['url', '最新版檔案的 Drive 連結', 'url', { full: true }], ['folderUrl', 'Drive 資料夾連結', 'url', { full: true }], ['fileNote', '最新版說明（如：B 版 2026-11-18）', 'text', { full: true }]] },
     events: { label: '重要日期', fields: () => [['title', '事項', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: [...projOpts(), ['', '共通']] }], ['date', '日期', 'date', { required: true }]] },
     team: { label: '成員', fields: () => [['name', '姓名', 'text', { required: true }], ['role', '職稱', 'text']] },
   };
