@@ -133,7 +133,7 @@
     if (!done) wrench(ctx, wx + 6, wy - 4, 0.5 + Math.sin(t * 9) * 0.3, 1.1);
     if (done) for (let k = 0; k < 5; k++) { // 整排管線亮一下
       const a = clamp((t - ev.done - k * 0.09) / 0.25), o = clamp(1.6 - (t - ev.done - k * 0.09) * 0.9);
-      if (a > 0 && o > 0) { ctx.save(); ctx.globalAlpha = o; G.star(ctx, 600 + k * 52 - (k % 2) * 330, PIPE_Y - 50 - (k % 3) * 22, 24 * ease.outBack(a), { fill: '#FFF2A8', rot: t * 1.5 + k, seed: 30 + k }); ctx.restore(); }
+      if (a > 0 && o > 0) { ctx.save(); ctx.globalAlpha = o; G.star(ctx, 560 + k * 62, PIPE_Y - 50 - (k % 3) * 22, 24 * ease.outBack(a), { fill: '#FFF2A8', rot: t * 1.5 + k, seed: 30 + k }); ctx.restore(); }
     }
     finish(ctx, 'rgba(255,170,90,0.22)');
   }
@@ -143,7 +143,7 @@
     ctx.save(); ctx.globalAlpha = n * 0.92; fillRect(ctx, -200, -200, W + 400, H + 400, lin(ctx, 0, 100, 0, 1900, [[0, '#232C4A'], [1, '#3A466B']]));
     for (let k = 0; k < 14; k++) { ctx.globalAlpha = n * (0.5 + 0.5 * Math.sin(t * 3 + k)); ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(110 + G.rnd(k, 7) * 860, 330 + G.rnd(k, 8) * 300, 4, 0, 7); ctx.fill(); }
     ctx.restore();
-    if (n > 0) { ctx.save(); ctx.globalAlpha = n; G.ellipse(ctx, 800, 650, 50, 50, { fill: '#F6F1D5', lw: 0, seed: 21 }); G.ellipse(ctx, 778, 636, 44, 44, { fill: '#2A3456', lw: 0, seed: 22 }); ctx.restore(); }
+    if (n > 0) { ctx.save(); ctx.globalAlpha = n; G.ellipse(ctx, 850, 545, 46, 46, { fill: '#F6F1D5', lw: 0, seed: 21 }); ctx.restore(); }
     pipeSeg(ctx, -40, 380, 1200, 96, 910); pipeSeg(ctx, 380, 700, 1200, 96, 912); pipeSeg(ctx, 700, 1130, 1200, 96, 914);
     let f = 0;
     ev.ticks.forEach((tt) => { f += 0.156 * ease.outBack(clamp((t - tt) / 0.18)); });
@@ -159,7 +159,7 @@
   function watch(ctx, t) { // 2:看看時間,「應該不會漏吧」
     fab(ctx, t, 'dusk');
     const think = t >= ev.think, m = think ? mouthOf('shu', t) : null, smug = t >= E[2] - 0.15;
-    const px = 350, py = 1380, s = 1.7;
+    const px = 425, py = 1380, s = 1.7;
     Ch.person(ctx, { x: px, y: py, s, pose: 'stand', style: CAST.shuSite, gesture: think ? 'shrug' : undefined, handL: think ? undefined : [-26, -322 + 52],
       eyes: smug ? 'happy' : 'normal', mouth: smug ? 'smirk' : m || (think ? 'smile' : 'flat'), brows: think ? 'up' : 'worried', look: think ? 0.7 : -0.25, lookY: think ? 0 : 0.8, headRot: think ? 0.04 : -0.05,
       sweat: think ? 0 : 0.5, blush: 0.5, blink: blink(t, 0.2), seed: 400 });
@@ -170,7 +170,7 @@
     // 放大的手錶
     const a = think ? 1 - clamp((t - ev.think) / 0.2) : popIn(t, A[2] + 0.15, 0.3);
     if (a > 0.01) {
-      ctx.save(); ctx.translate(735, 600); ctx.scale(a, a); ctx.rotate(0.08);
+      ctx.save(); ctx.translate(790, 560); ctx.scale(a, a); ctx.rotate(0.08);
       G.rrect(ctx, -46, -190, 92, 380, 16, { fill: '#5A4A3C', lw: 5, seed: 52 });
       G.ellipse(ctx, 0, 0, 122, 122, { fill: '#8A8F98', lw: 6, seed: 53 });
       G.ellipse(ctx, 0, 0, 102, 102, { fill: '#FFFDF4', lw: 4, seed: 54 });
@@ -184,33 +184,35 @@
     }
     if (think) for (let k = 0; k < 3; k++) { // 鎖得很緊的接頭
       const b = popIn(t, ev.think + 0.5 + k * 0.12, 0.25);
-      if (b > 0) G.star(ctx, 640 + k * 70, PIPE_Y - 58 - (k % 2) * 30, 22 * b, { fill: '#FFF2A8', rot: t + k, seed: 60 + k });
+      if (b > 0) G.star(ctx, 730 + k * 55, PIPE_Y - 120 - (k % 2) * 34, 22 * b, { fill: '#FFF2A8', rot: t + k, seed: 60 + k });
     }
     finish(ctx, 'rgba(255,170,90,0.22)');
   }
   function leave(ctx, t, s) { // 3:收工具,關燈回家
     fab(ctx, t, 'dusk');
     // 門
-    G.rrect(ctx, 842, 850, 190, 456, 6, { fill: '#6C7680', lw: 6, seed: 81 });
-    fillRect(ctx, 858, 866, 160, 434, lin(ctx, 0, 866, 0, 1300, [[0, '#F3A35C'], [1, '#FBE0A6']]));
-    G.rrect(ctx, 782, 1010, 34, 50, 6, { fill: '#FFFDF4', lw: 4, seed: 82 }); // 電燈開關
+    G.rrect(ctx, 774, 850, 190, 456, 6, { fill: '#6C7680', lw: 6, seed: 81 });
+    fillRect(ctx, 790, 866, 160, 434, lin(ctx, 0, 866, 0, 1300, [[0, '#F3A35C'], [1, '#FBE0A6']]));
+    G.rrect(ctx, 716, 1010, 34, 50, 6, { fill: '#FFFDF4', lw: 4, seed: 82 }); // 電燈開關
     const off = t >= ev.lights;
-    const wk = Ch.walk(t, { x0: 250, speed: 300, t0: s.t0, stride: 300, s: 1.15 });
+    const wk = Ch.walk(t, { x0: 230, speed: 290, t0: s.t0, stride: 300, s: 1.15 });
     const bob = Math.abs(Math.sin(2 * Math.PI * wk.walk)) * 12 * 1.15;
+    const dark = clamp((t - ev.lights) / 0.12) * 0.68;
+    if (off) { // 燈一關,只剩門口的光
+      ctx.save(); ctx.fillStyle = `rgba(14,18,44,${dark})`; ctx.beginPath(); ctx.rect(-200, -200, W + 400, H + 400); ctx.rect(790, 866, 160, 434); ctx.fill('evenodd'); ctx.restore();
+      fillRect(ctx, 300, 1250, 760, 400, rad(ctx, 870, 1310, 10, 420, [[0, `rgba(255,200,120,${dark * 0.5})`], [1, 'rgba(255,200,120,0)']]));
+    }
+    ctx.save(); if (off) ctx.filter = `brightness(${1 - dark * 0.75}) saturate(0.7)`;
     toolbox(ctx, wk.x - 112, GROUND - 96 - bob, 0.85);
     Ch.person(ctx, { ...wk, y: GROUND, s: 1.15, style: CAST.shuSite, eyes: 'happy', mouth: 'smile', brows: 'up', look: 0.6, blush: 0.5, seed: 400 });
-    if (off) { // 燈一關,只剩門口的光
-      const a = clamp((t - ev.lights) / 0.12) * 0.68;
-      ctx.save(); ctx.fillStyle = `rgba(14,18,44,${a})`; ctx.beginPath(); ctx.rect(-200, -200, W + 400, H + 400); ctx.rect(858, 866, 160, 434); ctx.fill('evenodd'); ctx.restore();
-      fillRect(ctx, 300, 1250, 760, 400, rad(ctx, 938, 1310, 10, 420, [[0, `rgba(255,200,120,${a * 0.5})`], [1, 'rgba(255,200,120,0)']]));
-    }
+    ctx.restore();
     finish(ctx, off ? 'rgba(255,170,90,0.05)' : 'rgba(255,170,90,0.22)');
   }
   function inspect(ctx, t) { // 4:隔天驗收,指針慢慢往下掉
     const u = clamp((t - ev.drop[0]) / (ev.drop[1] - ev.drop[0]));
     const f = lerp(0.78, 0.2, ease.inOutQuad(u)) + (u > 0 && u < 1 ? Math.sin(t * 23) * 0.006 : 0);
     const bad = u > 0.25 ? 1 : 0, falling = u > 0;
-    fab(ctx, t, 'morning', { gaugeFrac: f, alarm: bad });
+    fab(ctx, t, 'morning');
     // 放大的壓力錶
     G.poly(ctx, [[500, 850], [580, 850], [540, 905]], { fill: '#FFFFFF', lw: 5, seed: 90 });
     G.ellipse(ctx, 540, 610, 252, 252, { fill: '#FFFFFF', lw: 7, seed: 91 });
@@ -300,8 +302,8 @@
       ctx.save(); ctx.translate(cx, 440); ctx.rotate([-0.03, 0.02, -0.02][i]); ctx.scale(a, a);
       G.tornPaper(ctx, -112, -74, 224, 150, { fill: '#FFFDF4', seed: 640 + i });
       G.rrect(ctx, -112, -74, 224, 30, 4, { fill: RED, lw: 0, seed: 644 + i });
-      G.decor(() => label(ctx, d, 0, 42, 62, t >= ev.clanks[k] ? '#9A9088' : INK));
-      if (t >= ev.clanks[k]) { const b = clamp((t - ev.clanks[k]) / 0.15); G.line(ctx, [[-90, -40], [lerp(-90, 90, b), lerp(-40, 66, b)]], { color: RED, lw: 13, seed: 650 + i }); G.line(ctx, [[90, -40], [lerp(90, -90, b), lerp(-40, 66, b)]], { color: RED, lw: 13, seed: 654 + i }); }
+      G.decor(() => label(ctx, d, 0, 42, 62, INK));
+      if (t >= ev.clanks[k]) { const b = clamp((t - ev.clanks[k]) / 0.15); G.line(ctx, [[-90, -40], [lerp(-90, 90, b), lerp(-40, 66, b)]], { color: RED, lw: 9, seed: 650 + i, alpha: 0.85 }); G.line(ctx, [[90, -40], [lerp(90, -90, b), lerp(-40, 66, b)]], { color: RED, lw: 9, seed: 654 + i, alpha: 0.85 }); }
       ctx.restore();
     });
     finish(ctx, 'rgba(255,255,255,0.10)');
@@ -311,8 +313,10 @@
     pipeSeg(ctx, -30, 180, PIPE_Y, 34, 385);
     fillRect(ctx, -200, 300, W + 400, 1500, rad(ctx, 930, 760, 30, 900, [[0, 'rgba(255,214,140,0.50)'], [1, 'rgba(255,214,140,0)']])); // 工作燈的光
     // 工作燈
-    G.line(ctx, [[960, GROUND], [930, 800]], { color: '#3A3A44', lw: 9, seed: 701 }); G.line(ctx, [[900, GROUND], [930, 800]], { color: '#3A3A44', lw: 9, seed: 702 });
-    G.rrect(ctx, 885, 730, 90, 80, 10, { fill: '#F2C230', lw: 5, seed: 703 }); G.rrect(ctx, 878, 742, 26, 56, 6, { fill: '#FFF7D0', lw: 3, seed: 704 });
+    if (!talkShot) {
+      G.line(ctx, [[960, GROUND], [930, 800]], { color: '#3A3A44', lw: 9, seed: 701 }); G.line(ctx, [[900, GROUND], [930, 800]], { color: '#3A3A44', lw: 9, seed: 702 });
+      G.rrect(ctx, 885, 730, 90, 80, 10, { fill: '#F2C230', lw: 5, seed: 703 }); G.rrect(ctx, 878, 742, 26, 56, 6, { fill: '#FFF7D0', lw: 3, seed: 704 });
+    }
     // 拆下來的管子堆在地上
     for (let k = 0; k < 4; k++) { ctx.save(); ctx.translate(170 + (k % 2) * 30, 1280 - k * 30); ctx.rotate([0.08, -0.06, 0.1, -0.03][k]); pipeSeg(ctx, -75, 75, 0, 30, 710 + k * 4); ctx.restore(); }
     const speaking = t >= ev.speak - 0.1, m = mouthOf('master', t), after = t >= E[8];
