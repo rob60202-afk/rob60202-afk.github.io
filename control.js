@@ -86,9 +86,9 @@
 
   function taskRow(k) {
     const late = isLate(k.due, k.status === '完成');
-    return `<tr data-edit="tasks" data-id="${k.id}"><td class="wrap">${esc(k.title)}</td><td>${esc(pName(k.projectId))}</td><td>${esc(mName(k.assignee))}</td><td>${dateCell(k.due, late)}</td><td>${pill(k.priority)}</td><td>${pill(k.status)}</td></tr>`;
+    return `<tr data-edit="tasks" data-id="${k.id}"><td class="wrap">${esc(k.title)}</td><td>${esc(pName(k.projectId))}</td><td>${esc(mName(k.assignee))}</td><td>${dateCell(k.due, late)}</td><td>${pill(k.priority)}</td><td>${pill(k.status)}</td><td class="act">${k.status === '完成' ? '' : `<button class="c-btn small" data-done="${k.id}">✓ 完成</button>`}</td></tr>`;
   }
-  const TASK_HEAD = ['任務', '所屬案件', '負責人', '期限', '優先度', '狀態'];
+  const TASK_HEAD = ['任務', '所屬案件', '負責人', '期限', '優先度', '狀態', ''];
 
   /* ---------- 各分頁 ---------- */
   const views = {
@@ -295,8 +295,9 @@
   });
 
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-tab],[data-add],[data-edit],[data-action]');
+    const t = e.target.closest('[data-done],[data-tab],[data-add],[data-edit],[data-action]');
     if (!t) return;
+    if (t.dataset.done) { db.tasks.find((k) => k.id === t.dataset.done).status = '完成'; commit(); return; }
     if (t.dataset.tab) { tab = t.dataset.tab; render(); window.scrollTo(0, 0); }
     else if (t.dataset.add) openForm(t.dataset.add);
     else if (t.dataset.edit) openForm(t.dataset.edit, t.dataset.id);
@@ -318,6 +319,10 @@
     banner.hidden = !msg;
     banner.textContent = msg;
     $('#view').innerHTML = views[tab]();
+    document.querySelectorAll('.c-table').forEach((tb) => {
+      const labels = [...tb.querySelectorAll('th')].map((th) => th.textContent);
+      tb.querySelectorAll('tbody tr').forEach((tr) => [...tr.children].forEach((td, i) => { if (labels[i]) td.dataset.label = labels[i]; }));
+    });
   }
   render();
 })();

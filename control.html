@@ -2,11 +2,15 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="工程案件、團隊任務與 KPI 的彙整管控台。">
   <meta name="theme-color" content="#07111f">
   <meta name="robots" content="noindex">
   <title>專案管控台｜Rob</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="管控台">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -45,6 +49,8 @@
     <div id="view"></div>
     <p class="c-privacy">資料只存在這台裝置的瀏覽器，不會上傳到任何伺服器。換裝置或清除瀏覽器資料前，請先按「匯出備份」。</p>
   </main>
+
+  <button class="c-fab" type="button" data-add="tasks" aria-label="快速新增任務">＋</button>
 
   <dialog id="dialog" class="c-dialog">
     <form method="dialog" id="form">
