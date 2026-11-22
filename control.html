@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="工程案件、團隊任務與 KPI 的彙整管控台。">
+  <meta name="description" content="氫氣純化與氫氣灌充專案入口：進度、時程、任務、問題、文件與窗口。">
   <meta name="theme-color" content="#07111f">
   <meta name="robots" content="noindex">
-  <title>專案管控台｜Rob</title>
+  <title>氫氣專案入口｜Rob</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="管控台">
+  <meta name="apple-mobile-web-app-title" content="專案入口">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -22,10 +22,10 @@
   <a class="skip-link" href="#main">跳到主要內容</a>
 
   <header class="site-header">
-    <nav class="nav shell" aria-label="主要導覽">
-      <a class="brand" href="index.html" aria-label="回到首頁">
-        <span class="brand-mark" aria-hidden="true">R</span>
-        <span>ROB / CONTROL</span>
+    <nav class="nav shell" aria-label="工具列">
+      <a class="brand" href="#/" aria-label="回到專案入口">
+        <span class="brand-mark" aria-hidden="true">H₂</span>
+        <span>氫氣專案入口</span>
       </a>
       <div class="c-actions">
         <button class="c-btn" type="button" data-action="export">匯出備份</button>
@@ -34,14 +34,7 @@
         <input type="file" id="import-file" accept="application/json,.json" hidden>
       </div>
     </nav>
-    <div class="c-tabs shell" role="tablist" aria-label="管控台分頁">
-      <button role="tab" data-tab="overview" aria-selected="true">總覽</button>
-      <button role="tab" data-tab="projects" aria-selected="false">案件</button>
-      <button role="tab" data-tab="tasks" aria-selected="false">任務</button>
-      <button role="tab" data-tab="team" aria-selected="false">團隊</button>
-      <button role="tab" data-tab="kpis" aria-selected="false">KPI</button>
-      <button role="tab" data-tab="report" aria-selected="false">週報</button>
-    </div>
+    <nav class="c-tabs shell" id="nav" aria-label="主要導覽"></nav>
   </header>
 
   <main id="main" class="shell c-main">
@@ -67,6 +60,7 @@
 
   <dialog id="menu" class="c-dialog c-menu">
     <h2>資料管理</h2>
+    <button class="c-btn" type="button" data-action="add-project">新增專案</button>
     <button class="c-btn" type="button" data-action="sample">載入範例資料</button>
     <button class="c-btn danger" type="button" data-action="clear">清空全部資料</button>
     <button class="c-btn" type="button" data-action="close-menu">關閉</button>
