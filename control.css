@@ -255,3 +255,10 @@
 .c-gantt-group > summary span { color: var(--muted); font-size: .8rem; }
 .c-gantt-group > summary em { font-style: normal; }
 .c-gantt-group[open] > summary { border-bottom-color: var(--ink); }
+
+.c-sync { min-height: 38px; padding: 0 10px; border: 0; background: none; color: var(--ok); font-size: .78rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.c-sync.busy { color: var(--muted); } .c-sync.ask, .c-sync.error { color: var(--bad); text-decoration: underline; }
+.c-hr { margin: 16px 0 8px; border: 0; border-top: 1px solid var(--line); }
+@media (max-width: 520px) { .c-sync { position: fixed; left: 12px; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 56; background: var(--paper); border: 1px solid var(--line); } }
+
+.c-btn[hidden], .c-sync[hidden] { display: none !important; }

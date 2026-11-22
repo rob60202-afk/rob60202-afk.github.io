@@ -70,7 +70,7 @@
   }
   const COLLECTIONS = ['team', 'projects', 'milestones', 'tasks', 'issues', 'docs', 'contacts', 'submittals', 'events'];
   const REQUIRED = ['team', 'projects', 'milestones', 'tasks', 'issues', 'docs', 'contacts'];
-  const emptyData = () => Object.fromEntries([['sample', false], ...COLLECTIONS.map((k) => [k, []])]);
+  const emptyData = () => Object.fromEntries([['sample', false], ['deleted', {}], ...COLLECTIONS.map((k) => [k, []])]);
 
   // 舊版以成員代號記錄負責人，統一轉成姓名文字（可填廠商或多人）
   function migrate(data) {
@@ -79,6 +79,7 @@
     data.projects.forEach((p) => fix(p, 'owner'));
     data.tasks.forEach((k) => fix(k, 'assignee'));
     data.issues.forEach((i) => fix(i, 'owner'));
+    if (!data.deleted || typeof data.deleted !== 'object') data.deleted = {};
     return data;
   }
   let storageOk = true;
@@ -387,6 +388,114 @@
     <div class="c-filters"><button class="c-btn solid" data-action="copy">複製文字</button><button class="c-btn" data-action="print">列印 / 存 PDF</button></div>
     <textarea class="c-report" id="report" aria-label="週報內容">${esc(buildReport())}</textarea>`;
 
+  /* ---------- NAS 共用檔同步 ---------- */
+  // 逐筆合併：同一筆取較新的修改時間；刪除以墓碑紀錄，避免被別人的舊資料帶回來
+  function mergeData(a, b) {
+    const out = emptyData();
+    out.deleted = { ...(a.deleted || {}) };
+    Object.entries(b.deleted || {}).forEach(([id, ts]) => { out.deleted[id] = Math.max(out.deleted[id] || 0, ts); });
+    COLLECTIONS.forEach((c) => {
+      const map = new Map();
+      [...(a[c] || []), ...(b[c] || [])].forEach((x) => { const cur = map.get(x.id); if (!cur || (x.u || 0) > (cur.u || 0)) map.set(x.id, x); });
+      out[c] = [...map.values()].filter((x) => !(out.deleted[x.id] >= (x.u || 0) && out.deleted[x.id] > 0));
+    });
+    return out;
+  }
+  const sync = (() => {
+    const supported = 'showOpenFilePicker' in window && 'indexedDB' in window;
+    let handle = null;
+    let state = 'off'; // off | ok | ask | error | busy
+    let last = '';
+    let chain = Promise.resolve();
+    const idb = (mode, fn) => new Promise((resolve, reject) => {
+      const open = indexedDB.open('rob-h2-portal', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('kv');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => { try { const tx = open.result.transaction('kv', mode); const req = fn(tx.objectStore('kv')); tx.oncomplete = () => resolve(req && req.result); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); } catch (e) { reject(e); } };
+    });
+    const paint = () => {
+      const el = $('#sync');
+      if (!el) return;
+      const text = { off: '', ok: `NAS 已同步 ${last}`, busy: 'NAS 同步中…', ask: 'NAS 需重新連線（點此）', error: 'NAS 同步失敗（點此重試）' }[state];
+      el.hidden = !text;
+      el.textContent = text;
+      el.className = 'c-sync ' + state;
+      document.querySelectorAll('[data-nas]').forEach((b) => { b.hidden = b.dataset.nas === 'on' ? state === 'off' : state !== 'off'; });
+      const note = $('#nas-note');
+      if (note) note.textContent = supported ? (state === 'off' ? '把資料存成 NAS 共用資料夾裡的一個檔案，組員連結同一個檔就能互相同步。' : `已連結：${handle?.name || ''}`) : '這個瀏覽器不支援連結 NAS 檔案，請用電腦版 Chrome 或 Edge。手機可用「匯入」查看最新備份。';
+      document.querySelectorAll('[data-nas="off"]').forEach((b) => { if (!supported) b.hidden = true; });
+    };
+    const set = (s) => { state = s; paint(); };
+    const permitted = async (ask) => {
+      if (!handle.queryPermission) return true;
+      const opt = { mode: 'readwrite' };
+      if ((await handle.queryPermission(opt)) === 'granted') return true;
+      return ask ? (await handle.requestPermission(opt)) === 'granted' : false;
+    };
+    const readRemote = async () => {
+      const text = await (await handle.getFile()).text();
+      if (!text.trim()) return null;
+      const data = JSON.parse(text);
+      if (!REQUIRED.every((k) => Array.isArray(data[k]))) throw new Error('format');
+      return migrate(Object.assign(emptyData(), data));
+    };
+    // 讀共用檔 → 與本機合併 → 有差異才寫回
+    const run = (write, ask) => { chain = chain.then(async () => {
+      if (!handle) return;
+      try {
+        if (!(await permitted(ask))) { set('ask'); return; }
+        set('busy');
+        const remote = await readRemote();
+        const before = JSON.stringify(COLLECTIONS.map((c) => db[c]));
+        let merged = db;
+        if (remote) merged = db.sample ? remote : mergeData(db, remote);
+        merged.sample = false;
+        const after = JSON.stringify(COLLECTIONS.map((c) => merged[c]));
+        const remoteStr = remote ? JSON.stringify(COLLECTIONS.map((c) => remote[c])) : '';
+        if (write && after !== remoteStr) {
+          const w = await handle.createWritable();
+          await w.write(JSON.stringify(merged, null, 1));
+          await w.close();
+        }
+        db = merged;
+        save();
+        last = new Date().toTimeString().slice(0, 5);
+        set('ok');
+        const editing = $('#dialog').open || document.activeElement?.matches?.('input, textarea, select');
+        if (after !== before && !editing) render();
+      } catch (e) { set(e?.name === 'NotAllowedError' ? 'ask' : 'error'); }
+    }); return chain; };
+    return {
+      linked: () => Boolean(handle),
+      push: () => (handle ? run(true, false) : chain),
+      pull: () => (handle && state !== 'ask' ? run(true, false) : chain),
+      resume: () => (handle ? run(true, true) : chain),
+      async link(create) {
+        if (!supported) { alert('這個瀏覽器不支援連結 NAS 檔案，請用電腦版 Chrome 或 Edge。'); return; }
+        const types = [{ description: '專案資料檔', accept: { 'application/json': ['.json'] } }];
+        let h;
+        try { h = create ? await window.showSaveFilePicker({ suggestedName: 'h2-portal-shared.json', types }) : (await window.showOpenFilePicker({ types }))[0]; } catch (e) { return; }
+        if (!create) {
+          try { const f = await h.getFile(); const t = await f.text(); if (t.trim() && !REQUIRED.every((k) => Array.isArray(JSON.parse(t)[k]))) throw new Error('format'); } catch (e) { alert('這個檔案不是專案資料檔，請選正確的共用檔，或改用「建立新的共用檔」。'); return; }
+          if (!db.sample && COLLECTIONS.some((c) => db[c].length) && !confirm('這台電腦上已有資料，連結後會和共用檔逐筆合併。確定？')) return;
+        } else if (db.sample && !confirm('目前是範例資料，建立後共用檔會寫入這些範例。建議先匯入真實資料再建立。仍要繼續？')) return;
+        handle = h;
+        if (create) db.sample = false;
+        try { await idb('readwrite', (s) => s.put(h, 'handle')); } catch (e) { /* 無法記住連結時，下次需重新選檔 */ }
+        await run(true, true);
+      },
+      async unlink() { handle = null; try { await idb('readwrite', (s) => s.delete('handle')); } catch (e) { /* ignore */ } set('off'); },
+      async init() {
+        paint();
+        if (!supported) return;
+        setInterval(() => { if (!document.hidden) sync.pull(); }, 30000);
+        window.addEventListener('focus', () => sync.pull());
+        try { handle = (await idb('readonly', (s) => s.get('handle'))) || null; } catch (e) { handle = null; }
+        if (handle) await run(true, false);
+      },
+    };
+  })();
+
   /* ---------- 路由 ---------- */
   const openGroups = new Set();
   const touchedGroups = new Set();
@@ -456,7 +565,7 @@
     $('#dialog').showModal();
   }
 
-  function commit() { db.sample = false; save(); render(); }
+  function commit() { db.sample = false; save(); render(); sync.push(); }
 
   $('#form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -466,6 +575,7 @@
       const v = $('#form').elements[key].value.trim();
       data[key] = kind === 'number' ? Number(v) || 0 : v;
     });
+    data.u = Date.now();
     if (id) Object.assign(db[type].find((x) => x.id === id), data);
     else db[type].push({ id: uid(), ...data });
     $('#dialog').close();
@@ -476,14 +586,16 @@
     const { type, id } = editing;
     const warn = type === 'projects' ? '刪除專案會一併刪除它的里程碑、送審、任務、問題、文件、窗口與日期，確定？' : '確定刪除這筆資料？';
     if (!confirm(warn)) return;
+    const now = Date.now();
+    db.deleted[id] = now;
     db[type] = db[type].filter((x) => x.id !== id);
-    if (type === 'projects') { ['milestones', 'tasks', 'issues', 'docs', 'contacts', 'submittals', 'events'].forEach((c) => { db[c] = db[c].filter((x) => x.projectId !== id); }); location.hash = '#/'; }
+    if (type === 'projects') { ['milestones', 'tasks', 'issues', 'docs', 'contacts', 'submittals', 'events'].forEach((c) => { db[c] = db[c].filter((x) => { if (x.projectId === id) db.deleted[x.id] = now; return x.projectId !== id; }); }); location.hash = '#/'; }
     $('#dialog').close();
     commit();
   });
 
   /* ---------- 事件 ---------- */
-  const setStatus = (id, status) => { const k = db.tasks.find((x) => x.id === id); if (k && k.status !== status) { k.status = status; commit(); } };
+  const setStatus = (id, status) => { const k = db.tasks.find((x) => x.id === id); if (k && k.status !== status) { k.status = status; k.u = Date.now(); commit(); } };
   const actions = {
     export() {
       const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
@@ -497,8 +609,8 @@
     menu() { $('#menu').showModal(); },
     'close-menu'() { $('#menu').close(); },
     'add-project'() { $('#menu').close(); openForm('projects'); },
-    sample() { if (confirm('載入範例資料會取代目前全部資料，確定？')) { db = sampleData(); save(); $('#menu').close(); location.hash = '#/'; render(); } },
-    clear() { if (confirm('確定清空全部資料？此動作無法復原，建議先匯出備份。')) { db = emptyData(); save(); $('#menu').close(); location.hash = '#/'; render(); } },
+    sample() { if (sync.linked()) { alert('已連結 NAS 共用檔，為避免覆蓋大家的資料，請先取消連結再操作。'); return; } if (confirm('載入範例資料會取代目前全部資料，確定？')) { db = sampleData(); save(); $('#menu').close(); location.hash = '#/'; render(); } },
+    clear() { if (sync.linked()) { alert('已連結 NAS 共用檔，為避免清掉大家的資料，請先取消連結再操作。'); return; } if (confirm('確定清空全部資料？此動作無法復原，建議先匯出備份。')) { db = emptyData(); save(); $('#menu').close(); location.hash = '#/'; render(); } },
     copy(btn) {
       const text = $('#report').value;
       const done = () => { btn.textContent = '已複製'; setTimeout(() => { btn.textContent = '複製文字'; }, 1500); };
@@ -506,6 +618,10 @@
       if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, legacy); else legacy();
     },
     print() { window.print(); },
+    'nas-open'() { $('#menu').close(); sync.link(false); },
+    'nas-new'() { $('#menu').close(); sync.link(true); },
+    'nas-unlink'() { $('#menu').close(); sync.unlink(); },
+    'nas-sync'() { sync.resume(); },
   };
 
   $('#import-file').addEventListener('change', (e) => {
@@ -514,9 +630,11 @@
     file.text().then((text) => {
       const data = JSON.parse(text);
       if (!REQUIRED.every((k) => Array.isArray(data[k]))) throw new Error('format');
-      if (!confirm('匯入會取代目前全部資料，確定？')) return;
-      db = migrate(Object.assign(emptyData(), data, { sample: false }));
+      if (!confirm(sync.linked() ? '已連結 NAS 共用檔：匯入的內容會合併進共用檔，同一筆以匯入檔為準。確定？' : '匯入會取代目前全部資料，確定？')) return;
+      const incoming = migrate(Object.assign(emptyData(), data, { sample: false }));
+      if (sync.linked()) { const now = Date.now(); COLLECTIONS.forEach((c) => incoming[c].forEach((x) => { x.u = now; })); db = mergeData(db, incoming); } else db = incoming;
       save();
+      sync.push();
       location.hash = '#/';
       render();
     }).catch(() => alert('這個檔案不是有效的備份檔。')).finally(() => { e.target.value = ''; });
@@ -575,4 +693,5 @@
     });
   }
   render();
+  sync.init();
 })();

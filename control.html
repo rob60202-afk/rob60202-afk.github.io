@@ -28,6 +28,7 @@
         <span>氫氣專案入口</span>
       </a>
       <div class="c-actions">
+        <button class="c-sync" type="button" id="sync" data-action="nas-sync" hidden></button>
         <button class="c-btn" type="button" data-action="export">匯出備份</button>
         <button class="c-btn" type="button" data-action="import">匯入</button>
         <button class="c-btn" type="button" data-action="menu" aria-haspopup="true">更多</button>
@@ -61,6 +62,12 @@
   <dialog id="menu" class="c-dialog c-menu">
     <h2>資料管理</h2>
     <button class="c-btn" type="button" data-action="add-project">新增專案</button>
+    <p class="c-sub" id="nas-note" style="margin-top:14px"></p>
+    <button class="c-btn" type="button" data-action="nas-open" data-nas="off">連結既有的 NAS 共用檔</button>
+    <button class="c-btn" type="button" data-action="nas-new" data-nas="off">建立新的 NAS 共用檔</button>
+    <button class="c-btn" type="button" data-action="nas-sync" data-nas="on" hidden>立即同步</button>
+    <button class="c-btn" type="button" data-action="nas-unlink" data-nas="on" hidden>取消連結</button>
+    <hr class="c-hr">
     <button class="c-btn" type="button" data-action="sample">載入範例資料</button>
     <button class="c-btn danger" type="button" data-action="clear">清空全部資料</button>
     <button class="c-btn" type="button" data-action="close-menu">關閉</button>
