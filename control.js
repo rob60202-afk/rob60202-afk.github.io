@@ -127,7 +127,9 @@
     const subs = of('submittals', p.id);
     const subBad = subs.filter((x) => subState(x) === 'bad').length;
     const subOk = subs.filter((x) => subState(x) === 'ok').length;
-    const progress = ms.length ? Math.round(ms.reduce((s, m) => s + (Number(m.progress) || 0), 0) / ms.length) : 0;
+    const auto = ms.length ? Math.round(ms.reduce((s, m) => s + (Number(m.progress) || 0), 0) / ms.length) : 0;
+    const manual = p.progress !== '' && p.progress != null && !Number.isNaN(Number(p.progress));
+    const progress = manual ? Math.round(Number(p.progress) * 10) / 10 : auto;
     const lateTasks = open.filter((k) => isLate(k.due));
     const stuck = open.filter((k) => k.status === '卡關');
     const lateMs = ms.filter(msLate);
@@ -143,7 +145,7 @@
     if (issues.some((i) => i.level === '中')) flag('warn', '有中風險問題未結');
     if (subBad) flag('warn', `送審待我方回覆 ${subBad} 件`);
     const text = { ok: '正常', warn: '需注意', bad: '落後／高風險' }[cls];
-    return { ms, tasks, open, issues, subs, subBad, subOk, progress, lateTasks, stuck, lateMs, next, light: { cls, text, reasons }, left: p.due ? dayDiff(p.due, today()) : null };
+    return { ms, tasks, open, issues, subs, subBad, subOk, progress, manual, lateTasks, stuck, lateMs, next, light: { cls, text, reasons }, left: p.due ? dayDiff(p.due, today()) : null };
   }
 
   /* ---------- 小元件 ---------- */
@@ -226,7 +228,7 @@
   const sections = {
     overview(p, s) {
       return `<div class="c-tiles">
-          ${tile('整體進度', s.progress + '%', `里程碑 ${s.ms.filter((m) => Number(m.progress) >= 100).length}/${s.ms.length} 完成`, 'dark')}
+          ${tile('整體進度', s.progress + '%', s.manual ? esc(p.progressNote || '手動填寫') : `依 ${s.ms.length} 個工作項目平均估算`, 'dark')}
           ${tile('剩餘天數', s.left == null ? '—' : s.left, s.left != null && s.left < 0 ? '已超過期限' : `期限 ${esc(p.due || '未設定')}`, s.left != null && s.left < 0 ? 'bad' : '')}
           ${tile('未完成任務', s.open.length, `逾期 ${s.lateTasks.length}・卡關 ${s.stuck.length}`, s.lateTasks.length ? 'bad' : '')}
           ${tile('未結問題', s.issues.length, `高風險 ${s.issues.filter((i) => i.level === '高').length} 項`, s.issues.some((i) => i.level === '高') ? 'bad' : '')}
@@ -251,13 +253,13 @@
       const pos = (d) => Math.max(0, Math.min(100, (dayDiff(d, min) / span) * 100));
       const now = today() >= min && today() <= dates[dates.length - 1] ? `<i class="c-today" style="left:${pos(today())}%"></i>` : '';
       const row = (m) => {
-        if (!m.start && !m.due) return `<div class="c-gantt-row" data-edit="milestones" data-id="${m.id}" tabindex="0"><div class="c-gantt-label"><strong>${esc(m.name)}</strong><span>未排定日期　${Number(m.progress) || 0}%</span></div>${bar(m.progress, Number(m.progress) >= 100 ? 'done' : '')}</div>`;
+        if (!m.start && !m.due) return `<div class="c-gantt-row" data-edit="milestones" data-id="${m.id}" tabindex="0"><div class="c-gantt-label"><strong>${esc(m.name)}</strong><span>${m.actualEnd ? `實際完成 ${esc(m.actualEnd)}` : '未排定日期'}　${Number(m.progress) || 0}%${m.status ? '　' + esc(m.status) : ''}</span></div>${bar(m.progress, Number(m.progress) >= 100 ? 'done' : '')}${m.note ? `<p class="c-gantt-note">${esc(m.note)}</p>` : ''}</div>`;
         const a = pos(m.start || m.due);
         const w = Math.max(2, pos(m.due || m.start) - a);
         const done = Number(m.progress) >= 100;
         return `<div class="c-gantt-row" data-edit="milestones" data-id="${m.id}" tabindex="0">
-          <div class="c-gantt-label"><strong>${esc(m.name)}</strong><span class="${msLate(m) ? 'c-late' : ''}">${esc(m.start || '')} ～ ${esc(m.due || '')}${msLate(m) ? '（逾期）' : ''}　${Number(m.progress) || 0}%</span></div>
-          <div class="c-gantt-track">${now}<div class="c-gantt-bar ${done ? 'done' : msLate(m) ? 'late' : ''}" style="left:${a}%;width:${w}%"><b style="width:${Math.min(100, Number(m.progress) || 0)}%"></b></div></div></div>`;
+          <div class="c-gantt-label"><strong>${esc(m.name)}</strong><span class="${msLate(m) ? 'c-late' : ''}">${esc(m.start || '')} ～ ${esc(m.due || '')}${msLate(m) ? '（逾期）' : ''}　${Number(m.progress) || 0}%${m.status ? '　' + esc(m.status) : ''}</span></div>
+          <div class="c-gantt-track">${now}<div class="c-gantt-bar ${done ? 'done' : msLate(m) ? 'late' : ''}" style="left:${a}%;width:${w}%"><b style="width:${Math.min(100, Number(m.progress) || 0)}%"></b></div></div>${m.actualStart || m.actualEnd || m.note ? `<p class="c-gantt-note">${m.actualStart || m.actualEnd ? `實際 ${esc(m.actualStart || '—')} ～ ${esc(m.actualEnd || '—')}　` : ''}${esc(m.note || '')}</p>` : ''}</div>`;
       };
       const order = phasesOf(p);
       const rank = (g) => { const i = order.indexOf(g); return i < 0 ? -1 : i; };
@@ -520,11 +522,11 @@
     projects: { label: '專案', fields: () => [
       ['name', '專案名稱', 'text', { full: true, required: true }], ['code', '簡稱（導覽列顯示）', 'text'], ['client', '業主', 'text'],
       ['owner', '專案負責人', 'text', { list: true }], ['phase', '目前階段', 'select', { options: (editing?.id ? phasesOf(project(editing.id)) : PHASES).map((s) => [s, s]) }],
-      ['start', '開工日', 'date'], ['due', '完工期限', 'date'], ['contract', '合約金額', 'number', { min: 0, def: 0 }], ['billed', '已請款金額', 'number', { min: 0, def: 0 }],
+      ['start', '開工日', 'date'], ['due', '完工期限', 'date'], ['progress', '整體進度 %（留空則依工作項目平均）', 'number', { min: 0, max: 100, step: 'any', def: '', blank: true }], ['progressNote', '進度依據（如：C-chart 11/11）', 'text'], ['contract', '合約金額', 'number', { min: 0, def: 0 }], ['billed', '已請款金額', 'number', { min: 0, def: 0 }],
       ['phases', '階段清單（用頓號或換行分隔，留空用預設）', 'textarea', { full: true }], ['summary', '專案說明', 'textarea', { full: true }]] },
     milestones: { label: '里程碑', fields: () => [
       ['name', '里程碑名稱', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['progress', '完成 %', 'number', { min: 0, max: 100, def: 0, step: 'any' }],
-      ['start', '預定開始', 'date'], ['due', '預定完成', 'date'], ['group', '分類（如：設計、採購、施工）', 'text'], ['note', '備註', 'textarea', { full: true }]] },
+      ['start', '預定開始', 'date'], ['due', '預定完成', 'date'], ['actualStart', '實際開始', 'date'], ['actualEnd', '實際完成', 'date'], ['status', '狀態（如：已訂購、審查中）', 'text'], ['group', '分類（如：設計、採購、施工）', 'text'], ['note', '備註', 'textarea', { full: true }]] },
     tasks: { label: '任務', fields: () => [
       ['title', '任務內容', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: [...projOpts(), ['', '共通事項']] }],
       ['assignee', '負責人（可填成員、廠商，多人用／分隔）', 'text', { list: true }], ['due', '期限', 'date'], ['priority', '優先度', 'select', sel(PRIORITY, '一般')], ['status', '狀態', 'select', sel(TASK_STATUS, '待辦')]] },
@@ -571,9 +573,9 @@
     e.preventDefault();
     const { type, id } = editing;
     const data = {};
-    schemas[type].fields().forEach(([key, , kind]) => {
+    schemas[type].fields().forEach(([key, , kind, o = {}]) => {
       const v = $('#form').elements[key].value.trim();
-      data[key] = kind === 'number' ? Number(v) || 0 : v;
+      data[key] = kind !== 'number' ? v : o.blank && v === '' ? '' : Number(v) || 0;
     });
     data.u = Date.now();
     if (id) Object.assign(db[type].find((x) => x.id === id), data);
