@@ -19,7 +19,9 @@
   const LEVEL = ['低', '中', '高'];
   const ISSUE_STATUS = ['未結', '處理中', '已結'];
   const DOC_TYPES = ['圖面', '規範標準', '送審文件', '報價計價', '會議記錄', '其他'];
-  const SECTIONS = [['overview', '概況'], ['schedule', '時程'], ['tasks', '任務'], ['issues', '問題'], ['docs', '文件'], ['contacts', '窗口']];
+  const SECTIONS = [['overview', '概況'], ['schedule', '時程'], ['submittals', '送審'], ['tasks', '任務'], ['issues', '問題'], ['docs', '文件'], ['contacts', '窗口']];
+  const SUB_STATES = [['ok', '已核准'], ['warn', '審查中'], ['bad', '待我方回覆'], ['mute', '未送審']];
+  const SUB_LABEL = Object.fromEntries(SUB_STATES);
 
   /* ---------- 資料 ---------- */
   function sampleData() {
@@ -54,16 +56,36 @@
       ['pur', '業主專案窗口', '業主', '專案工程師'], ['pur', '配管包商', '包商', '現場負責人'], ['pur', '純化器設備商', '供應商', '業務窗口'],
       ['fill', '業主專案窗口', '業主', '專案工程師'], ['fill', '業主安全審查窗口', '業主', '工安'], ['fill', '灌充設備商', '供應商', '業務窗口'],
     ].map((r, i) => ({ id: 'c' + i, projectId: r[0], name: r[1], org: r[2], role: r[3], phone: '', email: '' }));
-    return { sample: true, team, projects, milestones, tasks, issues, docs, contacts };
+    const submittals = [
+      ['pur', 'D00003T', '純化器設備規格', '設備', 'B', '已核准', -50, -38, '', ''], ['pur', 'D00006T', '純化器系統 P&ID', '圖面', 'C', '審查中', -6, '', '業主', '業主會簽中，預計下週回覆。'],
+      ['pur', 'D00010T', '配管材料規格', '材料', 'A', '退回修正中', -20, -9, '我方', '需補材質證明與壓力等級對照。'], ['pur', 'D00012T', '測試計畫書', '程序書', '', '未送審', '', '', '我方', '初稿編寫中。'],
+      ['fill', 'D00007T', '灌充盤面規格', '設備', 'B', '審查中', -8, '', '業主', ''], ['fill', 'D00015T', '氫氣偵測器型錄', '儀電', 'A', '已核准', -30, -18, '', ''], ['fill', 'D00018T', '壓縮機製造計畫書', '設備', 'A', '退回修正', -15, -4, '供應商', '待設備商補充資料。'],
+    ].map((r, i) => ({ id: 's' + i, projectId: r[0], no: r[1], title: r[2], category: r[3], rev: r[4], status: r[5], submitDate: r[6] === '' ? '' : addDays(r[6]), replyDate: r[7] === '' ? '' : addDays(r[7]), pendingWith: r[8], note: r[9], url: '' }));
+    const events = [['pur', 6, '設計進度檢討會'], ['fill', 9, '安全審查會議'], ['pur', 16, '保壓測試會同']].map((r, i) => ({ id: 'e' + i, projectId: r[0], date: addDays(r[1]), title: r[2] }));
+    const nm = Object.fromEntries(team.map((t) => [t.id, t.name]));
+    projects.forEach((p) => { p.owner = nm[p.owner]; });
+    tasks.forEach((k) => { k.assignee = nm[k.assignee]; });
+    issues.forEach((i) => { i.owner = nm[i.owner]; });
+    return { sample: true, team, projects, milestones, tasks, issues, docs, contacts, submittals, events };
   }
-  const COLLECTIONS = ['team', 'projects', 'milestones', 'tasks', 'issues', 'docs', 'contacts'];
+  const COLLECTIONS = ['team', 'projects', 'milestones', 'tasks', 'issues', 'docs', 'contacts', 'submittals', 'events'];
+  const REQUIRED = ['team', 'projects', 'milestones', 'tasks', 'issues', 'docs', 'contacts'];
   const emptyData = () => Object.fromEntries([['sample', false], ...COLLECTIONS.map((k) => [k, []])]);
 
+  // 舊版以成員代號記錄負責人，統一轉成姓名文字（可填廠商或多人）
+  function migrate(data) {
+    const nm = Object.fromEntries(data.team.map((t) => [t.id, t.name]));
+    const fix = (o, key) => { if (o[key] && nm[o[key]]) o[key] = nm[o[key]]; };
+    data.projects.forEach((p) => fix(p, 'owner'));
+    data.tasks.forEach((k) => fix(k, 'assignee'));
+    data.issues.forEach((i) => fix(i, 'owner'));
+    return data;
+  }
   let storageOk = true;
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) return Object.assign(emptyData(), JSON.parse(raw));
+      if (raw) return migrate(Object.assign(emptyData(), JSON.parse(raw)));
     } catch (e) { storageOk = false; }
     return sampleData();
   }
@@ -73,21 +95,37 @@
   let db = load();
 
   /* ---------- 共用計算 ---------- */
-  const member = (id) => db.team.find((x) => x.id === id);
+  const people = (v) => String(v || '').split(/[／\/、,，]+/).map((s) => s.trim()).filter(Boolean);
+  const isMine = (v, m) => people(v).includes(m.name);
   const project = (id) => db.projects.find((x) => x.id === id);
-  const mName = (id) => member(id)?.name || '未指派';
+  const mName = (v) => v || '未指派';
   const pCode = (id) => { const p = project(id); return p ? p.code || p.name : '共通'; };
   const of = (type, pid) => db[type].filter((x) => x.projectId === pid);
   const openTask = (k) => k.status !== '完成';
   const openIssue = (i) => i.status !== '已結';
   const isLate = (due) => Boolean(due) && due < today();
   const msLate = (m) => Number(m.progress) < 100 && isLate(m.due);
+  const phasesOf = (p) => { const l = String(p.phases || '').split(/[\n,，、]+/).map((s) => s.trim()).filter(Boolean); return l.length ? l : PHASES; };
+  // 有手動指定的分類就用它，否則依狀態文字判斷
+  function subState(x) {
+    if (SUB_LABEL[x.state]) return x.state;
+    const s = String(x.status || '');
+    if (!s || /未送|尚未|待送|待提送|準備|編寫|未提/.test(s)) return 'mute';
+    if (/退|修正|修改|重送|不同意|不符|補正|補件/.test(s)) return 'bad';
+    if (/中$|中[；;，,（(]|待/.test(s)) return 'warn';
+    if (/核准|核可|同意|通過|完成|結案|承認|備查|approved/i.test(s)) return 'ok';
+    return 'warn';
+  }
+  const subCounts = (list) => SUB_STATES.map(([k, l]) => [k, l, list.filter((x) => subState(x) === k).length]);
 
   function stats(p) {
     const ms = of('milestones', p.id);
     const tasks = of('tasks', p.id);
     const open = tasks.filter(openTask);
     const issues = of('issues', p.id).filter(openIssue);
+    const subs = of('submittals', p.id);
+    const subBad = subs.filter((x) => subState(x) === 'bad').length;
+    const subOk = subs.filter((x) => subState(x) === 'ok').length;
     const progress = ms.length ? Math.round(ms.reduce((s, m) => s + (Number(m.progress) || 0), 0) / ms.length) : 0;
     const lateTasks = open.filter((k) => isLate(k.due));
     const stuck = open.filter((k) => k.status === '卡關');
@@ -102,8 +140,9 @@
     if (lateTasks.length) flag('warn', `任務逾期 ${lateTasks.length} 件`);
     if (stuck.length) flag('warn', `任務卡關 ${stuck.length} 件`);
     if (issues.some((i) => i.level === '中')) flag('warn', '有中風險問題未結');
+    if (subBad) flag('warn', `送審待我方回覆 ${subBad} 件`);
     const text = { ok: '正常', warn: '需注意', bad: '落後／高風險' }[cls];
-    return { ms, tasks, open, issues, progress, lateTasks, stuck, lateMs, next, light: { cls, text, reasons }, left: p.due ? dayDiff(p.due, today()) : null };
+    return { ms, tasks, open, issues, subs, subBad, subOk, progress, lateTasks, stuck, lateMs, next, light: { cls, text, reasons }, left: p.due ? dayDiff(p.due, today()) : null };
   }
 
   /* ---------- 小元件 ---------- */
@@ -123,9 +162,10 @@
     const v = Math.max(0, Math.min(100, Number(value) || 0));
     return `<div class="c-bar ${cls}"><i><b style="width:${v}%"></b></i><span>${v}%</span></div>`;
   }
-  function stepper(phase) {
-    const cur = PHASES.indexOf(phase);
-    return `<ol class="c-steps" aria-label="專案階段">${PHASES.map((ph, i) => `<li class="${i < cur ? 'done' : i === cur ? 'current' : ''}"><span>${i + 1}</span>${ph}</li>`).join('')}</ol>`;
+  function stepper(p) {
+    const list = phasesOf(p);
+    const cur = list.indexOf(p.phase);
+    return `<ol class="c-steps" style="--n:${list.length}" aria-label="專案階段">${list.map((ph, i) => `<li class="${i < cur ? 'done' : i === cur ? 'current' : ''}"><span>${i + 1}</span>${esc(ph)}</li>`).join('')}</ol>`;
   }
   function statusBar(tasks) {
     const cls = { 待辦: 'todo', 進行中: 'doing', 卡關: 'stuck', 完成: 'done' };
@@ -147,6 +187,11 @@
     return `<tr data-edit="issues" data-id="${i.id}"><td class="wrap">${esc(i.title)}</td>${withProject ? `<td>${esc(pCode(i.projectId))}</td>` : ''}<td>${pill(i.level)}</td><td>${pill(i.status)}</td><td>${esc(mName(i.owner))}</td><td>${dateCell(i.due, openIssue(i) && isLate(i.due))}</td><td class="wrap">${esc(i.action)}</td></tr>`;
   }
 
+  function eventList(list, withProject) {
+    if (!list.length) return '<p class="c-empty c-panel">沒有即將到來的日期。</p>';
+    return `<ul class="c-events">${list.map((e) => { const d = dayDiff(e.date, today()); return `<li data-edit="events" data-id="${e.id}" tabindex="0"><time>${esc(e.date.slice(5))}</time><div><strong>${esc(e.title)}</strong><span>${withProject ? esc(pCode(e.projectId)) + '・' : ''}${d === 0 ? '今天' : d === 1 ? '明天' : `${d} 天後`}</span></div></li>`; }).join('')}</ul>`;
+  }
+
   /* ---------- 頁面：入口 ---------- */
   function homeView() {
     const cards = db.projects.map((p) => {
@@ -158,18 +203,22 @@
           <div><dt>期限</dt><dd>${p.due ? `${esc(p.due)}（${s.left >= 0 ? `剩 ${s.left} 天` : `逾期 ${-s.left} 天`}）` : '未設定'}</dd></div>
           <div><dt>專案負責人</dt><dd>${esc(mName(p.owner))}</dd></div>
           <div><dt>下一個里程碑</dt><dd>${s.next ? `${esc(s.next.name)}（${esc(s.next.due)}）` : '無'}</dd></div></dl></div>
-        ${stepper(p.phase)}
-        <div class="c-mini"><div><strong>${s.open.length}</strong>未完成任務</div><div class="${s.lateTasks.length ? 'bad' : ''}"><strong>${s.lateTasks.length}</strong>逾期任務</div><div class="${s.issues.length ? 'warn' : ''}"><strong>${s.issues.length}</strong>未結問題</div><div><strong>${pct(p.billed, p.contract)}%</strong>請款率</div></div>
+        ${stepper(p)}
+        <div class="c-mini"><div><strong>${s.open.length}</strong>未完成任務</div><div class="${s.lateTasks.length ? 'bad' : ''}"><strong>${s.lateTasks.length}</strong>逾期任務</div><div class="${s.issues.length ? 'warn' : ''}"><strong>${s.issues.length}</strong>未結問題</div><div class="${s.subBad ? 'warn' : ''}"><strong>${s.subOk}/${s.subs.length}</strong>送審核准</div></div>
         ${s.light.reasons.length ? `<p class="c-reasons">${s.light.reasons.map(esc).join('・')}</p>` : ''}
         <a class="c-btn solid c-enter" href="#/p/${p.id}/overview">進入專案 →</a>
       </article>`;
     });
-    const focus = db.tasks.filter((k) => openTask(k) && (isLate(k.due) || k.status === '卡關' || (k.due && k.due <= addDays(7)))).sort((a, b) => (a.due || '9').localeCompare(b.due || '9'));
-    const hot = db.issues.filter((i) => openIssue(i) && i.level !== '低');
+    const pr = (k) => (k.status === '卡關' ? 0 : 1) + PRIORITY.length - PRIORITY.indexOf(k.priority);
+    const focus = db.tasks.filter((k) => openTask(k) && (isLate(k.due) || k.status === '卡關' || (k.due && k.due <= addDays(7)))).sort((a, b) => pr(a) - pr(b) || (a.due || '9').localeCompare(b.due || '9'));
+    const hot = db.issues.filter((i) => openIssue(i) && i.level === '高');
+    const more = (n, what) => (n > 0 ? `<p class="c-sub" style="margin-top:8px">還有 ${n} ${what}，請進入各專案查看。</p>` : '');
+    const upcoming = db.events.filter((e) => e.date >= today()).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
     return `<div class="c-head"><div><h1>專案入口</h1><p class="c-sub">${today()}　共 ${db.projects.length} 個專案</p></div></div>
       <div class="c-projects">${cards.join('') || '<p class="c-empty">尚無專案，請到右上「更多」新增專案。</p>'}</div>
-      <div class="c-section">${head('本週要盯的任務')}${table(['任務', '專案', '負責人', '期限', '優先度', '狀態', ''], focus.map((k) => taskRow(k, true)), '本週沒有到期、逾期或卡關的任務。')}</div>
-      <div class="c-section">${head('待處理的問題與風險')}${table(['問題', '專案', '等級', '狀態', '負責人', '期限', '對策'], hot.map((i) => issueRow(i, true)), '目前沒有中高風險的未結問題。')}</div>`;
+      <div class="c-section">${head('近期重要日期', ['events', '新增日期'])}${eventList(upcoming, true)}</div>
+      <div class="c-section">${head('本週要盯的任務')}${table(['任務', '專案', '負責人', '期限', '優先度', '狀態', ''], focus.slice(0, 8).map((k) => taskRow(k, true)), '本週沒有到期、逾期或卡關的任務。')}${more(focus.length - 8, '件逾期、卡關或 7 天內到期的任務')}</div>
+      <div class="c-section">${head('高風險問題')}${table(['問題', '專案', '等級', '狀態', '負責人', '期限', '對策'], hot.slice(0, 8).map((i) => issueRow(i, true)), '目前沒有高風險的未結問題。')}${more(hot.length - 8, '項高風險問題')}</div>`;
   }
 
   /* ---------- 頁面：專案 ---------- */
@@ -180,36 +229,74 @@
           ${tile('剩餘天數', s.left == null ? '—' : s.left, s.left != null && s.left < 0 ? '已超過期限' : `期限 ${esc(p.due || '未設定')}`, s.left != null && s.left < 0 ? 'bad' : '')}
           ${tile('未完成任務', s.open.length, `逾期 ${s.lateTasks.length}・卡關 ${s.stuck.length}`, s.lateTasks.length ? 'bad' : '')}
           ${tile('未結問題', s.issues.length, `高風險 ${s.issues.filter((i) => i.level === '高').length} 項`, s.issues.some((i) => i.level === '高') ? 'bad' : '')}
-          ${tile('合約金額', money(p.contract), '元')}
-          ${tile('請款率', pct(p.billed, p.contract) + '%', `未請款 ${money(p.contract - p.billed)}`)}
+          ${tile('送審核准', `${s.subOk}/${s.subs.length}`, `待我方回覆 ${s.subBad} 件`, s.subBad ? 'bad' : '')}
+          ${Number(p.contract) > 0 ? tile('請款率', pct(p.billed, p.contract) + '%', `合約 ${money(p.contract)}`) : tile('重要日期', of('events', p.id).filter((e) => e.date >= today()).length, '即將到來')}
         </div>
-        <div class="c-section c-panel"><h3>專案階段</h3>${stepper(p.phase)}</div>
+        <div class="c-section c-panel"><h3>專案階段</h3>${stepper(p)}</div>
         <div class="c-two">
           <div class="c-panel"><h3>任務狀態</h3>${statusBar(s.tasks)}</div>
           <div class="c-panel"><h3>專案說明</h3><p>${esc(p.summary) || '尚未填寫。'}</p><p class="c-sub">業主：${esc(p.client || '—')}　負責人：${esc(mName(p.owner))}　工期：${esc(p.start || '—')} ～ ${esc(p.due || '—')}</p></div>
         </div>
+        <div class="c-section">${head('近期重要日期', ['events', '新增日期'])}${eventList(of('events', p.id).filter((e) => e.date >= today()).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5), false)}</div>
         <div class="c-section">${head('接下來的里程碑')}${table(['里程碑', '期限', '進度'], s.ms.filter((m) => Number(m.progress) < 100).sort((a, b) => (a.due || '9').localeCompare(b.due || '9')).slice(0, 3).map((m) => `<tr data-edit="milestones" data-id="${m.id}"><td class="wrap">${esc(m.name)}</td><td>${dateCell(m.due, msLate(m))}</td><td>${bar(m.progress)}</td></tr>`), '里程碑都已完成。')}</div>`;
     },
 
     schedule(p, s) {
       const ms = [...s.ms].sort((a, b) => (a.start || a.due || '').localeCompare(b.start || b.due || ''));
       const dates = [p.start, p.due, ...ms.flatMap((m) => [m.start, m.due])].filter(Boolean).sort();
-      if (!ms.length || dates.length < 2) return `${head('時程', ['milestones', '新增里程碑'])}<p class="c-empty">尚無里程碑。</p>`;
+      if (!ms.length || dates.length < 2) return `${head('時程', ['milestones', '新增工作項目'])}<p class="c-empty">尚無工作項目。</p>`;
       const min = dates[0];
       const span = Math.max(1, dayDiff(dates[dates.length - 1], min));
       const pos = (d) => Math.max(0, Math.min(100, (dayDiff(d, min) / span) * 100));
       const now = today() >= min && today() <= dates[dates.length - 1] ? `<i class="c-today" style="left:${pos(today())}%"></i>` : '';
-      const rows = ms.map((m) => {
+      const row = (m) => {
+        if (!m.start && !m.due) return `<div class="c-gantt-row" data-edit="milestones" data-id="${m.id}" tabindex="0"><div class="c-gantt-label"><strong>${esc(m.name)}</strong><span>未排定日期　${Number(m.progress) || 0}%</span></div>${bar(m.progress, Number(m.progress) >= 100 ? 'done' : '')}</div>`;
         const a = pos(m.start || m.due);
         const w = Math.max(2, pos(m.due || m.start) - a);
         const done = Number(m.progress) >= 100;
         return `<div class="c-gantt-row" data-edit="milestones" data-id="${m.id}" tabindex="0">
           <div class="c-gantt-label"><strong>${esc(m.name)}</strong><span class="${msLate(m) ? 'c-late' : ''}">${esc(m.start || '')} ～ ${esc(m.due || '')}${msLate(m) ? '（逾期）' : ''}　${Number(m.progress) || 0}%</span></div>
           <div class="c-gantt-track">${now}<div class="c-gantt-bar ${done ? 'done' : msLate(m) ? 'late' : ''}" style="left:${a}%;width:${w}%"><b style="width:${Math.min(100, Number(m.progress) || 0)}%"></b></div></div></div>`;
+      };
+      const order = phasesOf(p);
+      const rank = (g) => { const i = order.indexOf(g); return i < 0 ? -1 : i; };
+      const groups = [...new Set(ms.map((m) => m.group || ''))].sort((a, b) => rank(a) - rank(b));
+      const firstOpen = groups.find((g) => ms.some((m) => (m.group || '') === g && Number(m.progress) < 100));
+      const body = groups.length < 2 ? ms.map(row).join('') : groups.map((g) => {
+        const list = ms.filter((m) => (m.group || '') === g);
+        const done = list.filter((m) => Number(m.progress) >= 100).length;
+        const late = list.filter(msLate).length;
+        const key = p.id + '|' + g;
+        const open = openGroups.has(key) || (!touchedGroups.has(key) && g === firstOpen);
+        return `<details class="c-gantt-group" data-group="${esc(key)}" ${open ? 'open' : ''}><summary><strong>${esc(g || '未分類')}</strong><span>${done}/${list.length} 完成${late ? `・<em class="c-late">逾期 ${late}</em>` : ''}</span></summary>${list.map(row).join('')}</details>`;
+      }).join('');
+      return `${head('時程', ['milestones', '新增工作項目'])}
+        <p class="c-sub" style="margin-bottom:12px">橫條是預定起訖，深色是已完成比例，直線是今天。點分類可展開或收合，點任一列可更新進度。</p>
+        <div class="c-gantt"><div class="c-gantt-axis"><span>${esc(min)}</span><span>${esc(dates[dates.length - 1])}</span></div>${body}</div>`;
+    },
+
+    submittals(p, s) {
+      const list = [...s.subs].sort((a, b) => String(a.no).localeCompare(String(b.no), 'zh-Hant', { numeric: true }));
+      const uniq = (key) => [...new Set(list.map((x) => x[key]).filter(Boolean))];
+      const rows = list.map((x) => {
+        const st = subState(x);
+        const u = safeUrl(x.url);
+        const detail = [x.status && x.status !== SUB_LABEL[st] ? x.status : '', x.note].filter(Boolean).join('｜');
+        return `<tr data-edit="submittals" data-id="${x.id}" data-state="${st}" data-pending="${esc(x.pendingWith)}" data-text="${esc([x.no, x.title, x.category, x.status, x.note, x.pendingWith].join(' ').toLowerCase())}">
+          <td class="wrap"><span class="c-no">${esc(x.no)}</span> ${esc(x.title)}</td><td>${esc(x.category || '—')}</td><td>${esc(x.rev || '—')}</td><td>${pill(SUB_LABEL[st], st)}</td>
+          <td>${esc(x.pendingWith || '—')}</td><td>${esc(x.submitDate || '—')}</td><td>${esc(x.replyDate || '—')}</td><td class="wrap">${esc(detail)}${u ? ` <a href="${esc(u)}" target="_blank" rel="noopener noreferrer">開啟 ↗</a>` : ''}</td></tr>`;
       });
-      return `${head('時程', ['milestones', '新增里程碑'])}
-        <p class="c-sub" style="margin-bottom:12px">橫條是預定起訖，深色是已完成比例，直線是今天。點任一列可更新進度。</p>
-        <div class="c-gantt"><div class="c-gantt-axis"><span>${esc(min)}</span><span>${esc(dates[dates.length - 1])}</span></div>${rows.join('')}</div>`;
+      const counts = subCounts(list);
+      return `${head('送審管制', ['submittals', '新增送審'])}
+        <div class="c-stack" role="img" aria-label="送審狀態：${counts.map(([, l, n]) => `${l} ${n}`).join('、')}">${counts.filter(([, , n]) => n).map(([k, , n]) => `<b class="s-${k}" style="flex:${n}">${n}</b>`).join('')}</div>
+        <ul class="c-legend">${counts.map(([k, l, n]) => `<li><i class="s-${k}"></i>${l} ${n}</li>`).join('')}</ul>
+        <div class="c-filters" style="margin-top:16px">
+          <input type="search" id="sub-q" placeholder="搜尋編號、名稱、意見" aria-label="搜尋送審文件">
+          <select id="sub-state" aria-label="依狀態篩選"><option value="">全部狀態</option>${SUB_STATES.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+          <select id="sub-pending" aria-label="依待辦方篩選"><option value="">全部待辦方</option>${uniq('pendingWith').map((v) => `<option>${esc(v)}</option>`).join('')}</select>
+        </div>
+        <p class="c-sub" id="sub-count" style="margin-bottom:8px">共 ${list.length} 件</p>
+        ${table(['文件', '類別', '版次', '狀態', '待辦方', '送審日', '回覆日', '現況與意見'], rows, '尚無送審文件。')}`;
     },
 
     tasks(p, s) {
@@ -247,9 +334,9 @@
     },
 
     contacts(p) {
-      const list = of('contacts', p.id);
+      const list = of('contacts', p.id).sort((a, b) => String(a.org).localeCompare(String(b.org), 'zh-Hant'));
       return `${head('聯絡窗口', ['contacts', '新增窗口'])}
-        <div class="c-cards">${list.map((c) => `<div class="c-card" data-edit="contacts" data-id="${c.id}" tabindex="0"><h3>${esc(c.name)}</h3><p>${esc(c.org || '')}${c.role ? '・' + esc(c.role) : ''}</p>
+        <div class="c-cards">${list.map((c) => `<div class="c-card" data-edit="contacts" data-id="${c.id}" tabindex="0"><h3>${esc(c.name || c.org)}</h3><p>${esc(c.name ? c.org || '' : '')}${c.role ? (c.name && c.org ? '・' : '') + esc(c.role) : ''}</p>
           ${c.phone ? `<a class="c-btn small" href="tel:${esc(c.phone.replace(/[^\d+#*]/g, ''))}">撥打 ${esc(c.phone)}</a>` : ''} ${c.email ? `<a class="c-btn small" href="mailto:${esc(c.email)}">寄信</a>` : ''}
           ${!c.phone && !c.email ? '<span class="c-pill mute">尚未填聯絡方式</span>' : ''}</div>`).join('') || '<p class="c-empty">尚無窗口。</p>'}</div>`;
     },
@@ -265,7 +352,7 @@
   /* ---------- 頁面：團隊、週報 ---------- */
   function teamView() {
     const cards = db.team.map((m) => {
-      const mine = db.tasks.filter((k) => k.assignee === m.id && openTask(k));
+      const mine = db.tasks.filter((k) => isMine(k.assignee, m) && openTask(k));
       const late = mine.filter((k) => isLate(k.due)).length;
       return `<div class="c-card" data-edit="team" data-id="${m.id}" tabindex="0"><h3>${esc(m.name)}</h3><p>${esc(m.role || '')}</p>
         <span class="c-pill">未完成 ${mine.length}</span> <span class="c-pill ${late ? 'bad' : 'mute'}">逾期 ${late}</span>
@@ -283,13 +370,16 @@
       parts.push([
         `【${p.name}】燈號：${s.light.text}${s.light.reasons.length ? `（${s.light.reasons.join('、')}）` : ''}`,
         `- 整體進度 ${s.progress}%｜階段：${p.phase || '未設定'}｜期限 ${p.due || '未定'}｜負責人 ${mName(p.owner)}`,
-        `- 計價：合約 ${money(p.contract)}，已請款 ${money(p.billed)}（${pct(p.billed, p.contract)}%）`,
+        ...(Number(p.contract) > 0 ? [`- 計價：合約 ${money(p.contract)}，已請款 ${money(p.billed)}（${pct(p.billed, p.contract)}%）`] : []),
         sec('▍里程碑', s.ms.filter((m) => Number(m.progress) < 100).slice(0, 3).map((m) => `- ${m.name}：${m.progress || 0}%，期限 ${m.due || '未定'}${msLate(m) ? '（逾期）' : ''}`), '里程碑均已完成'),
+        `▍送審：${subCounts(s.subs).map(([, l, n]) => `${l} ${n}`).join('、')}（共 ${s.subs.length} 件）`,
+        sec('▍待我方回覆的送審', s.subs.filter((x) => subState(x) === 'bad').map((x) => `- ${x.no} ${x.title}｜待 ${x.pendingWith || '—'}｜${x.note || ''}`), '無'),
+        sec('▍近期重要日期', of('events', p.id).filter((e) => e.date >= today() && e.date <= addDays(14)).sort((a, b) => a.date.localeCompare(b.date)).map((e) => `- ${e.date} ${e.title}`), '兩週內無'),
         sec('▍問題與風險', s.issues.map((i) => `- [${i.level}] ${i.title}｜對策：${i.action || '待補'}｜${mName(i.owner)}`), '無未結問題'),
         sec('▍下週預計推進', s.open.filter((k) => k.due && k.due <= addDays(7)).map((k) => `- ${k.title}（${mName(k.assignee)}，期限 ${k.due}${isLate(k.due) ? '，已逾期' : ''}）`), '無 7 天內到期任務'),
       ].join('\n'));
     });
-    parts.push(sec('【團隊人力配置】', db.team.map((m) => `- ${m.name}：${db.projects.map((p) => `${p.code || p.name} ${db.tasks.filter((k) => k.assignee === m.id && k.projectId === p.id && openTask(k)).length} 件`).join('、')}`), '尚未建立成員'));
+    parts.push(sec('【團隊人力配置】', db.team.map((m) => `- ${m.name}：${db.projects.map((p) => `${p.code || p.name} ${db.tasks.filter((k) => isMine(k.assignee, m) && k.projectId === p.id && openTask(k)).length} 件`).join('、')}`), '尚未建立成員'));
     parts.push('【需主管協助事項】\n- （請填寫）');
     return parts.join('\n\n');
   }
@@ -298,6 +388,14 @@
     <textarea class="c-report" id="report" aria-label="週報內容">${esc(buildReport())}</textarea>`;
 
   /* ---------- 路由 ---------- */
+  const openGroups = new Set();
+  const touchedGroups = new Set();
+  document.addEventListener('toggle', (e) => {
+    const key = e.target.dataset?.group;
+    if (!key) return;
+    touchedGroups.add(key);
+    if (e.target.open) openGroups.add(key); else openGroups.delete(key);
+  }, true);
   let route = { page: 'home' };
   function parseRoute() {
     const [, a, b, c] = location.hash.split('/');
@@ -307,30 +405,34 @@
   }
 
   /* ---------- 表單 ---------- */
-  const teamOpts = () => [['', '未指派'], ...db.team.map((m) => [m.id, m.name])];
   const projOpts = () => db.projects.map((p) => [p.id, p.name]);
   const sel = (list, def) => ({ options: list.map((s) => [s, s]), def });
   const schemas = {
     projects: { label: '專案', fields: () => [
       ['name', '專案名稱', 'text', { full: true, required: true }], ['code', '簡稱（導覽列顯示）', 'text'], ['client', '業主', 'text'],
-      ['owner', '專案負責人', 'select', { options: teamOpts() }], ['phase', '目前階段', 'select', sel(PHASES, PHASES[0])],
+      ['owner', '專案負責人', 'text', { list: true }], ['phase', '目前階段', 'select', { options: (editing?.id ? phasesOf(project(editing.id)) : PHASES).map((s) => [s, s]) }],
       ['start', '開工日', 'date'], ['due', '完工期限', 'date'], ['contract', '合約金額', 'number', { min: 0, def: 0 }], ['billed', '已請款金額', 'number', { min: 0, def: 0 }],
-      ['summary', '專案說明', 'textarea', { full: true }]] },
+      ['phases', '階段清單（用頓號或換行分隔，留空用預設）', 'textarea', { full: true }], ['summary', '專案說明', 'textarea', { full: true }]] },
     milestones: { label: '里程碑', fields: () => [
-      ['name', '里程碑名稱', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['progress', '完成 %', 'number', { min: 0, max: 100, def: 0 }],
-      ['start', '預定開始', 'date'], ['due', '預定完成', 'date']] },
+      ['name', '里程碑名稱', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['progress', '完成 %', 'number', { min: 0, max: 100, def: 0, step: 'any' }],
+      ['start', '預定開始', 'date'], ['due', '預定完成', 'date'], ['group', '分類（如：設計、採購、施工）', 'text'], ['note', '備註', 'textarea', { full: true }]] },
     tasks: { label: '任務', fields: () => [
       ['title', '任務內容', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: [...projOpts(), ['', '共通事項']] }],
-      ['assignee', '負責人', 'select', { options: teamOpts() }], ['due', '期限', 'date'], ['priority', '優先度', 'select', sel(PRIORITY, '一般')], ['status', '狀態', 'select', sel(TASK_STATUS, '待辦')]] },
+      ['assignee', '負責人（可填成員、廠商，多人用／分隔）', 'text', { list: true }], ['due', '期限', 'date'], ['priority', '優先度', 'select', sel(PRIORITY, '一般')], ['status', '狀態', 'select', sel(TASK_STATUS, '待辦')]] },
     issues: { label: '問題', fields: () => [
       ['title', '問題或風險', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['level', '等級', 'select', sel(LEVEL, '中')],
-      ['status', '狀態', 'select', sel(ISSUE_STATUS, '未結')], ['owner', '負責人', 'select', { options: teamOpts() }], ['due', '預計解決日', 'date'], ['action', '對策與進展', 'textarea', { full: true }]] },
+      ['status', '狀態', 'select', sel(ISSUE_STATUS, '未結')], ['owner', '負責人', 'text', { list: true }], ['due', '預計解決日', 'date'], ['action', '對策與進展', 'textarea', { full: true }]] },
     docs: { label: '文件', fields: () => [
       ['title', '文件名稱', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['type', '類別', 'select', sel(DOC_TYPES, '圖面')],
       ['rev', '版次', 'text'], ['url', '雲端連結（https://）', 'url', { full: true }]] },
     contacts: { label: '窗口', fields: () => [
-      ['name', '姓名或稱呼', 'text', { required: true }], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['org', '單位（業主／包商／供應商）', 'text'], ['role', '職稱或角色', 'text'],
+      ['name', '姓名或稱呼', 'text'], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['org', '單位（業主／包商／供應商）', 'text'], ['role', '職稱或角色', 'text'],
       ['phone', '電話', 'tel'], ['email', 'Email', 'email']] },
+    submittals: { label: '送審文件', fields: () => [
+      ['title', '文件名稱', 'text', { full: true, required: true }], ['no', '文件編號', 'text'], ['projectId', '所屬專案', 'select', { options: projOpts() }], ['category', '類別', 'text'], ['rev', '版次', 'text'],
+      ['state', '分類', 'select', { options: [['', '依現況文字自動判斷'], ...SUB_STATES] }], ['status', '現況說明（如：V3 會簽意見回覆中）', 'text', { full: true }], ['pendingWith', '待辦方（我方／業主／供應商）', 'text'], ['submitDate', '送審日', 'date'], ['replyDate', '回覆日', 'date'],
+      ['note', '會簽意見與備註', 'textarea', { full: true }], ['url', '雲端連結（https://）', 'url', { full: true }]] },
+    events: { label: '重要日期', fields: () => [['title', '事項', 'text', { full: true, required: true }], ['projectId', '所屬專案', 'select', { options: [...projOpts(), ['', '共通']] }], ['date', '日期', 'date', { required: true }]] },
     team: { label: '成員', fields: () => [['name', '姓名', 'text', { required: true }], ['role', '職稱', 'text']] },
   };
 
@@ -348,9 +450,9 @@
       let input;
       if (kind === 'select') input = `<select ${attr}>${o.options.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(val) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
       else if (kind === 'textarea') input = `<textarea ${attr}>${esc(val)}</textarea>`;
-      else input = `<input type="${kind}" ${attr} value="${esc(val)}" ${o.min != null ? `min="${o.min}"` : ''} ${o.max != null ? `max="${o.max}"` : ''}>`;
+      else input = `<input type="${kind}" ${attr} value="${esc(val)}" ${o.list ? 'list="team-list" autocomplete="off"' : ''} ${o.min != null ? `min="${o.min}"` : ''} ${o.max != null ? `max="${o.max}"` : ''} ${o.step ? `step="${o.step}"` : ''}>`;
       return `<label class="${o.full ? 'full' : ''}">${label}${input}</label>`;
-    }).join('');
+    }).join('') + `<datalist id="team-list">${db.team.map((m) => `<option value="${esc(m.name)}">`).join('')}</datalist>`;
     $('#dialog').showModal();
   }
 
@@ -372,11 +474,10 @@
   $('#form-cancel').addEventListener('click', () => $('#dialog').close());
   $('#form-delete').addEventListener('click', () => {
     const { type, id } = editing;
-    const warn = type === 'projects' ? '刪除專案會一併刪除它的里程碑、任務、問題、文件與窗口，確定？' : '確定刪除這筆資料？';
+    const warn = type === 'projects' ? '刪除專案會一併刪除它的里程碑、送審、任務、問題、文件、窗口與日期，確定？' : '確定刪除這筆資料？';
     if (!confirm(warn)) return;
     db[type] = db[type].filter((x) => x.id !== id);
-    if (type === 'team') { db.tasks.forEach((k) => { if (k.assignee === id) k.assignee = ''; }); db.issues.forEach((i) => { if (i.owner === id) i.owner = ''; }); db.projects.forEach((p) => { if (p.owner === id) p.owner = ''; }); }
-    if (type === 'projects') { ['milestones', 'tasks', 'issues', 'docs', 'contacts'].forEach((c) => { db[c] = db[c].filter((x) => x.projectId !== id); }); location.hash = '#/'; }
+    if (type === 'projects') { ['milestones', 'tasks', 'issues', 'docs', 'contacts', 'submittals', 'events'].forEach((c) => { db[c] = db[c].filter((x) => x.projectId !== id); }); location.hash = '#/'; }
     $('#dialog').close();
     commit();
   });
@@ -386,9 +487,11 @@
   const actions = {
     export() {
       const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `氫氣專案備份-${today()}.json` });
+      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `h2-portal-backup-${today()}.json` });
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     },
     import() { $('#import-file').click(); },
     menu() { $('#menu').showModal(); },
@@ -410,9 +513,9 @@
     if (!file) return;
     file.text().then((text) => {
       const data = JSON.parse(text);
-      if (!COLLECTIONS.every((k) => Array.isArray(data[k]))) throw new Error('format');
+      if (!REQUIRED.every((k) => Array.isArray(data[k]))) throw new Error('format');
       if (!confirm('匯入會取代目前全部資料，確定？')) return;
-      db = Object.assign(emptyData(), data, { sample: false });
+      db = migrate(Object.assign(emptyData(), data, { sample: false }));
       save();
       location.hash = '#/';
       render();
@@ -444,6 +547,16 @@
     col.classList.remove('over');
     setStatus(e.dataTransfer.getData('text/plain'), col.dataset.col);
   });
+  function applySubFilter() {
+    const q = ($('#sub-q')?.value || '').trim().toLowerCase();
+    const st = $('#sub-state')?.value || '';
+    const pd = $('#sub-pending')?.value || '';
+    let shown = 0;
+    const rows = document.querySelectorAll('tr[data-edit="submittals"]');
+    rows.forEach((tr) => { const ok = (!q || tr.dataset.text.includes(q)) && (!st || tr.dataset.state === st) && (!pd || tr.dataset.pending === pd); tr.hidden = !ok; if (ok) shown += 1; });
+    if ($('#sub-count')) $('#sub-count').textContent = shown === rows.length ? `共 ${rows.length} 件` : `顯示 ${shown} / ${rows.length} 件`;
+  }
+  document.addEventListener('input', (e) => { if (e.target.matches('#sub-q, #sub-state, #sub-pending')) applySubFilter(); });
   window.addEventListener('hashchange', () => { const prev = route; route = parseRoute(); render(); if (prev.page !== route.page || prev.id !== route.id) window.scrollTo(0, 0); });
 
   function render() {
