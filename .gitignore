@@ -1,3 +1,5 @@
 animation/.cache/
 __pycache__/
 animation/output/
+animation/films/*/engine/
+animation/films/*/out/

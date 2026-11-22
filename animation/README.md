@@ -42,3 +42,38 @@ python3 animation/make_video.py animation/stories/001-crooked-chair.json
 | 審片、封面、上傳 | 人工 | 手動 |
 
 圖片與配音會快取在 `animation/.cache/`,中斷後重跑會從斷點接續;想重畫某一幕,刪掉對應的 `imageNN.jpg` 再跑一次。
+
+## 人物會動的動畫短片(`films/`)
+
+`films/` 底下每個資料夾是一支用 animation-studio 外掛製作的短片,角色、場景與動作都由程式繪製,人物會走路、做手勢、對嘴。
+
+| 檔案 | 內容 |
+|---|---|
+| `lines.js` | 旁白台詞 |
+| `score.js` | 時間軸(畫面與聲音共用) |
+| `song.js` | 配樂、音效與配音 |
+| `film.js` | 每一幕的角色與場景 |
+
+引擎(`engine/`)與成品(`out/`)不進版控。重新製作時先用外掛的 `new-project.js` 建一個同格式的專案,把 `engine/` 複製進來,再執行:
+
+```bash
+cd animation/films/crooked-chair
+```
+
+```bash
+PATH=../../tools:$PATH PIPER_MODEL=zh-TW node prep-voice.js
+```
+
+```bash
+PATH=../../tools:$PATH PIPER_MODEL=zh-TW node song.js
+```
+
+```bash
+node engine/render.js video
+```
+
+```bash
+node engine/render.js mux
+```
+
+`tools/piper` 是配音轉接程式,讓引擎改用 Google 語音(gTTS)產生台灣中文旁白。
