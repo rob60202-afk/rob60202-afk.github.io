@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{DESC}}">
+  <meta name="theme-color" content="#0a1421">
+  <title>{{TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #0a1421; --muted: #526171; --paper: #f4f2ed; --card: #fff;
+      --acid: #b7f33d; --line: rgba(10, 20, 33, .15);
+      --yes: #2f8f5b; --no: #c8452f; --na: #6b7785;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+    a { color: inherit; }
+    .shell { width: min(860px, calc(100% - 32px)); margin-inline: auto; }
+    header.top { padding: 28px 0 8px; }
+    .back { font-size: .9rem; color: var(--muted); text-decoration: none; }
+    h1 { font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.2; margin: 14px 0 10px; text-wrap: balance; }
+    .lead { color: var(--muted); margin: 0 0 6px; max-width: 60ch; }
+    .rule { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--acid); border-radius: 10px; padding: 14px 16px; margin: 18px 0; }
+    .rule strong { display: block; margin-bottom: 4px; }
+    .rule ol { margin: 0; padding-left: 1.2em; }
+    .bar { position: sticky; top: 0; z-index: 5; background: var(--ink); color: #fff; }
+    .bar .shell { display: flex; align-items: center; gap: 14px; padding: 10px 0; }
+    .meter { flex: 1; height: 10px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
+    .meter i { display: block; height: 100%; width: 0; background: var(--acid); transition: width .25s; }
+    .count { font-variant-numeric: tabular-nums; font-size: .92rem; white-space: nowrap; }
+    .count b { color: var(--acid); }
+    section.group { margin: 26px 0; }
+    section.group h2 { font-size: 1.15rem; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    section.group h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+    .item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: start; }
+    .item[data-state="no"] { border-color: var(--no); box-shadow: inset 4px 0 0 var(--no); }
+    .item[data-state="yes"] { box-shadow: inset 4px 0 0 var(--yes); }
+    .item[data-state="na"] { box-shadow: inset 4px 0 0 var(--na); opacity: .8; }
+    .text { font-weight: 500; }
+    .hint { display: block; color: var(--muted); font-size: .88rem; font-weight: 400; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .seg button { font: inherit; font-size: .9rem; min-width: 52px; min-height: 40px; padding: 6px 10px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"][data-v="yes"] { background: var(--yes); color: #fff; }
+    .seg button[aria-pressed="true"][data-v="no"] { background: var(--no); color: #fff; }
+    .seg button[aria-pressed="true"][data-v="na"] { background: var(--na); color: #fff; }
+    .seg button:focus-visible, .actions button:focus-visible, .actions a:focus-visible, select:focus-visible { outline: 3px solid var(--acid); outline-offset: 2px; }
+    .follow { grid-column: 1 / -1; display: none; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+    .item[data-state="no"] .follow { display: flex; }
+    .follow select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; max-width: 100%; }
+    .summary { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 30px 0 14px; }
+    .summary h2 { margin: 0 0 8px; font-size: 1.15rem; }
+    .summary ul { margin: 0; padding-left: 1.2em; }
+    .summary li { margin-bottom: 4px; }
+    .summary .tag { font-size: .8rem; padding: 1px 8px; border-radius: 99px; background: var(--paper); border: 1px solid var(--line); margin-left: 6px; white-space: nowrap; }
+    .summary .warn { color: var(--no); font-weight: 700; }
+    .ok { color: var(--yes); font-weight: 700; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 10px; }
+    .actions button, .actions a { font: inherit; font-weight: 700; padding: 12px 18px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; text-decoration: none; }
+    .actions .ghost { background: transparent; color: var(--ink); }
+    footer { color: var(--muted); font-size: .85rem; padding: 10px 0 60px; }
+    @media (max-width: 560px) {
+      .item { grid-template-columns: 1fr; }
+      .seg { width: 100%; }
+      .seg button { flex: 1; }
+    }
+    @media print {
+      .bar, .actions, .back { display: none; }
+      body { background: #fff; }
+      .item { break-inside: avoid; }
+      .item[data-state="na"] { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top shell">
+    <a class="back" href="../">← 全部工具</a>
+    <h1>{{TITLE}}</h1>
+    <p class="lead">{{LEAD}}</p>
+    {{RULE}}
+  </header>
+
+  <div class="bar" role="status" aria-live="polite">
+    <div class="shell">
+      <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+      <div class="count">已確認 <b id="done">0</b> / <span id="total">0</span>,待處理 <b id="open">0</b></div>
+    </div>
+  </div>
+
+  <main class="shell" id="list"></main>
+
+  <div class="shell">
+    <section class="summary" aria-labelledby="sum-title">
+      <h2 id="sum-title">還沒有著落的項目</h2>
+      <div id="summary"></div>
+    </section>
+    <div class="actions">
+      <button type="button" id="print">列印或存成 PDF</button>
+      <a class="ghost" href="{{XLSX}}" download="{{XLSX_NAME}}">下載 Excel 版</a>
+      <button type="button" class="ghost" id="reset">清空重填</button>
+    </div>
+    <footer>{{FOOTER}}</footer>
+  </div>
+
+  <script src="checklist.js"></script>
+  <script>
+    (function () {
+      var KEY = '{{KEY}}';
+      var LABEL = { yes: '有', no: '無', na: '不適用' };
+      var PLAN = {{PLAN}};
+      var state = {};
+      try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+      function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 無法儲存時仍可使用 */ } }
+
+      var list = document.getElementById('list');
+      var groups = window.CHECKLIST || [];
+      var total = 0;
+
+      groups.forEach(function (g, gi) {
+        var sec = document.createElement('section');
+        sec.className = 'group';
+        var h = document.createElement('h2');
+        h.innerHTML = '<span></span><small></small>';
+        h.firstChild.textContent = g.title;
+        sec.appendChild(h);
+        g.items.forEach(function (it, ii) {
+          total += 1;
+          var id = gi + '-' + ii;
+          var row = document.createElement('div');
+          row.className = 'item';
+          row.dataset.id = id;
+          var text = document.createElement('div');
+          text.className = 'text';
+          text.textContent = it.text;
+          if (it.hint) { var hint = document.createElement('span'); hint.className = 'hint'; hint.textContent = it.hint; text.appendChild(hint); }
+          var seg = document.createElement('div');
+          seg.className = 'seg';
+          seg.setAttribute('role', 'group');
+          seg.setAttribute('aria-label', it.text);
+          ['yes', 'no', 'na'].forEach(function (v) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.dataset.v = v; b.textContent = LABEL[v];
+            b.setAttribute('aria-pressed', 'false');
+            b.addEventListener('click', function () {
+              var cur = state[id] || {};
+              state[id] = cur.v === v ? {} : { v: v, plan: v === 'no' ? (cur.plan || '') : '' };
+              save(); render();
+            });
+            seg.appendChild(b);
+          });
+          var follow = document.createElement('label');
+          follow.className = 'follow';
+          var span = document.createElement('span');
+          span.textContent = '{{PLAN_Q}}';
+          var sel = document.createElement('select');
+          Object.keys(PLAN).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = PLAN[k]; sel.appendChild(o); });
+          sel.addEventListener('change', function () { state[id] = { v: 'no', plan: sel.value }; save(); render(); });
+          follow.appendChild(span); follow.appendChild(sel);
+          row.appendChild(text); row.appendChild(seg); row.appendChild(follow);
+          sec.appendChild(row);
+        });
+        list.appendChild(sec);
+      });
+
+      function render() {
+        var done = 0, open = [];
+        document.querySelectorAll('.group').forEach(function (sec, gi) {
+          var n = 0, items = sec.querySelectorAll('.item');
+          items.forEach(function (row) {
+            var s = state[row.dataset.id] || {};
+            row.dataset.state = s.v || '';
+            row.querySelectorAll('.seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === s.v)); });
+            row.querySelector('select').value = s.plan || '';
+            var settled = s.v === 'yes' || s.v === 'na' || (s.v === 'no' && s.plan);
+            if (settled) { n += 1; done += 1; }
+            if (s.v === 'no') open.push({ text: row.querySelector('.text').firstChild.textContent, plan: s.plan || '' });
+          });
+          sec.querySelector('h2 small').textContent = n + ' / ' + items.length;
+        });
+        document.getElementById('done').textContent = done;
+        document.getElementById('total').textContent = total;
+        var pending = open.filter(function (o) { return !o.plan; }).length;
+        document.getElementById('open').textContent = (total - done);
+        document.getElementById('meter').style.width = (total ? (100 * done / total) : 0) + '%';
+        var box = document.getElementById('summary');
+        box.textContent = '';
+        if (!open.length) {
+          var p = document.createElement('p');
+          p.style.margin = '0';
+          p.textContent = done === total ? '{{DONE_MSG}}' : '目前沒有標成「無」的項目。還有 ' + (total - done) + ' 項沒填。';
+          if (done === total) p.className = 'ok';
+          box.appendChild(p);
+          return;
+        }
+        if (pending) { var w = document.createElement('p'); w.className = 'warn'; w.style.margin = '0 0 6px'; w.textContent = '有 ' + pending + ' 項標成「無」但還沒決定{{PLAN_SHORT}}。'; box.appendChild(w); }
+        var ul = document.createElement('ul');
+        open.forEach(function (o) {
+          var li = document.createElement('li');
+          li.textContent = o.text;
+          var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = PLAN[o.plan];
+          li.appendChild(tag); ul.appendChild(li);
+        });
+        box.appendChild(ul);
+      }
+
+      document.getElementById('print').addEventListener('click', function () { window.print(); });
+      document.getElementById('reset').addEventListener('click', function () {
+        if (!window.confirm('確定要清空所有勾選嗎?')) return;
+        state = {}; save(); render();
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>

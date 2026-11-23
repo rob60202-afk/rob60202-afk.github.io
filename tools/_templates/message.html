@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{DESC}}">
+  <meta name="theme-color" content="#0a1421">
+  <title>{{TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink: #0a1421; --muted: #526171; --paper: #f4f2ed; --card: #fff; --acid: #b7f33d; --line: rgba(10, 20, 33, .15); --warn: #c8452f; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+    .shell { width: min(860px, calc(100% - 32px)); margin-inline: auto; }
+    header.top { padding: 28px 0 8px; }
+    .back { font-size: .9rem; color: var(--muted); text-decoration: none; }
+    h1 { font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.2; margin: 14px 0 10px; text-wrap: balance; }
+    .lead { color: var(--muted); margin: 0; max-width: 62ch; }
+    .rule { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--acid); border-radius: 10px; padding: 14px 16px; margin: 18px 0; }
+    .rule strong { display: block; margin-bottom: 4px; }
+    .rule ul, .rule ol { margin: 0; padding-left: 1.2em; }
+    .layout { display: grid; gap: 22px; grid-template-columns: 1fr; margin: 10px 0 30px; }
+    @media (min-width: 900px) { .shell.wide { width: min(1180px, calc(100% - 48px)); } .layout { grid-template-columns: 1fr 1fr; align-items: start; } .out { position: sticky; top: 16px; } }
+    fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 14px 16px 6px; margin: 0 0 14px; }
+    legend { font-weight: 700; padding: 0 6px; }
+    label { display: block; font-weight: 500; margin: 0 0 4px; }
+    .hint { display: block; color: var(--muted); font-size: .86rem; font-weight: 400; margin-bottom: 6px; }
+    input, textarea { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); margin-bottom: 12px; }
+    textarea { min-height: 84px; resize: vertical; }
+    input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--acid); outline-offset: 2px; }
+    .req { color: var(--warn); font-size: .8rem; margin-left: 4px; }
+    .out h2 { font-size: 1.1rem; margin: 0 0 8px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 0; font-family: inherit; min-height: 180px; }
+    .missing { color: var(--warn); font-size: .9rem; margin: 8px 0 0; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .actions button { font: inherit; font-weight: 700; padding: 12px 18px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+    .actions .ghost { background: transparent; color: var(--ink); }
+    .tips { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .tips h2 { font-size: 1.05rem; margin: 0 0 6px; }
+    .tips ul { margin: 0; padding-left: 1.2em; }
+    footer { color: var(--muted); font-size: .85rem; padding: 10px 0 60px; }
+  </style>
+</head>
+<body>
+  <header class="top shell wide">
+    <a class="back" href="../">← 全部工具</a>
+    <h1>{{TITLE}}</h1>
+    <p class="lead">{{LEAD}}</p>
+    {{RULE}}
+  </header>
+  <main class="shell wide">
+    <div class="layout">
+      <form id="form" autocomplete="off"></form>
+      <section class="out" aria-labelledby="out-title">
+        <h2 id="out-title">產生的內容</h2>
+        <pre id="out" aria-live="polite"></pre>
+        <p class="missing" id="missing"></p>
+        <div class="actions">
+          <button type="button" id="copy">複製文字</button>
+          <button type="button" class="ghost" id="reset">清空重填</button>
+        </div>
+        {{TIPS}}
+      </section>
+    </div>
+    <footer>{{FOOTER}}</footer>
+  </main>
+  <script>
+    (function () {
+      var CONFIG = {{CONFIG}};
+      var KEY = CONFIG.key;
+      var data = {};
+      try { data = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { data = {}; }
+      function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* 無法儲存時仍可使用 */ } }
+      var form = document.getElementById('form');
+      CONFIG.groups.forEach(function (g) {
+        var fs = document.createElement('fieldset');
+        var lg = document.createElement('legend'); lg.textContent = g.title; fs.appendChild(lg);
+        g.fields.forEach(function (f) {
+          var lab = document.createElement('label'); lab.htmlFor = 'f-' + f.id; lab.textContent = f.label;
+          if (f.required) { var r = document.createElement('span'); r.className = 'req'; r.textContent = '必填'; lab.appendChild(r); }
+          fs.appendChild(lab);
+          if (f.hint) { var h = document.createElement('span'); h.className = 'hint'; h.textContent = f.hint; fs.appendChild(h); }
+          var el = document.createElement(f.multiline ? 'textarea' : 'input');
+          el.id = 'f-' + f.id; el.placeholder = f.placeholder || '';
+          el.value = data[f.id] || '';
+          el.addEventListener('input', function () { data[f.id] = el.value; save(); render(); });
+          fs.appendChild(el);
+        });
+        form.appendChild(fs);
+      });
+      function val(id) { return (data[id] || '').trim(); }
+      function render() {
+        var lines = [], missing = [];
+        CONFIG.output.forEach(function (sec) {
+          if (sec.text) { lines.push(sec.text); return; }
+          var parts = sec.fields.map(function (id) {
+            var f = CONFIG.byId[id], v = val(id);
+            if (!v && f.required) missing.push(f.label);
+            if (!v) return '';
+            return (f.prefix || '') + v + (f.suffix || '');
+          }).filter(Boolean);
+          if (!parts.length && sec.optional) return;
+          if (sec.heading) lines.push(sec.heading);
+          if (parts.length) parts.forEach(function (p) { lines.push(p); });
+          else lines.push(sec.empty || '(待填)');
+          lines.push('');
+        });
+        document.getElementById('out').textContent = lines.join('\n').trim();
+        document.getElementById('missing').textContent = missing.length ? '還沒填:' + missing.join('、') : '';
+      }
+      document.getElementById('copy').addEventListener('click', function () {
+        var text = document.getElementById('out').textContent, btn = this;
+        function done() { btn.textContent = '已複製'; setTimeout(function () { btn.textContent = '複製文字'; }, 1500); }
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+        else fallback();
+        function fallback() { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { /* 無法複製 */ } document.body.removeChild(t); }
+      });
+      document.getElementById('reset').addEventListener('click', function () {
+        if (!window.confirm('確定要清空所有欄位嗎?')) return;
+        data = {}; save();
+        form.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+        render();
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>

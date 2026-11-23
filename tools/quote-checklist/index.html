@@ -77,17 +77,10 @@
 </head>
 <body>
   <header class="top shell">
-    <a class="back" href="../../">← 回首頁</a>
+    <a class="back" href="../">← 全部工具</a>
     <h1>報價送出前檢核表</h1>
     <p class="lead">報價漏掉一行,不是少一行字,是少一筆錢。送出之前,花五分鐘把每一項問過一次。</p>
-    <div class="rule">
-      <strong>選「無」的項目不可以空著,先分三種:</strong>
-      <ol>
-        <li>一定會發生的:補一行金額。</li>
-        <li>甲方可以提供的:寫進報價假設。</li>
-        <li>條件變了才會發生的:寫進不含項目,或另做選項報價。</li>
-      </ol>
-    </div>
+    <div class="rule"><strong>選「無」的項目不可以空著,先分三種:</strong><ol><li>一定會發生的:補一行金額。</li><li>甲方可以提供的:寫進報價假設。</li><li>條件變了才會發生的:寫進不含項目,或另做選項報價。</li></ol></div>
   </header>
 
   <div class="bar" role="status" aria-live="polite">
@@ -109,9 +102,7 @@
       <a class="ghost" href="quote-checklist.xlsx" download="報價送出前檢核表.xlsx">下載 Excel 版</a>
       <button type="button" class="ghost" id="reset">清空重填</button>
     </div>
-    <footer>
-      本表是通用的提醒清單,不是完整的成本項目,也不代表任何行情。實際範圍與計價方式以合約約定為準。填寫內容只存在你這台裝置的瀏覽器裡,不會上傳。
-    </footer>
+    <footer>本表是通用的提醒清單,不是完整的項目,也不代表任何法規、規範或行情。實際要求以法規、業主規範、原廠說明與合約為準。填寫內容只存在你這台裝置的瀏覽器裡,不會上傳。</footer>
   </div>
 
   <script src="checklist.js"></script>
@@ -119,7 +110,7 @@
     (function () {
       var KEY = 'quote-checklist-v1';
       var LABEL = { yes: '有', no: '無', na: '不適用' };
-      var PLAN = { '': '還沒決定怎麼處理', add: '補一行金額', assume: '寫進報價假設(甲方提供)', exclude: '列入不含項目或選項報價' };
+      var PLAN = {"": "還沒決定怎麼處理", "add": "補一行金額", "assume": "寫進報價假設(甲方提供)", "exclude": "列入不含項目或選項報價"};
       var state = {};
       try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
       function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 無法儲存時仍可使用 */ } }

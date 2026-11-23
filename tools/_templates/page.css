@@ -1,0 +1,24 @@
+:root { --ink: #0a1421; --muted: #526171; --paper: #f4f2ed; --card: #fff; --acid: #b7f33d; --line: rgba(10, 20, 33, .15); }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+.shell { width: min(960px, calc(100% - 32px)); margin-inline: auto; padding: 28px 0 60px; }
+.back { font-size: .9rem; color: var(--muted); text-decoration: none; }
+.kicker { margin: 16px 0 0; font-size: .82rem; letter-spacing: .12em; font-weight: 700; }
+h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); line-height: 1.2; margin: 8px 0 10px; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 62ch; margin: 0 0 18px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; box-shadow: 8px 8px 0 var(--acid); margin: 10px 0 18px; }
+.card h2 { margin: 0 0 6px; font-size: 1.1rem; }
+.card ul { margin: 0 0 16px; padding-left: 1.2em; }
+.button { display: inline-block; font-weight: 700; padding: 12px 18px; border-radius: 10px; background: var(--ink); color: #fff; text-decoration: none; }
+.button:focus-visible, a:focus-visible { outline: 3px solid var(--acid); outline-offset: 2px; }
+.note { color: var(--muted); font-size: .92rem; }
+footer { color: var(--muted); font-size: .85rem; margin-top: 30px; }
+.group { margin: 28px 0 8px; }
+.group h2 { font-size: 1.15rem; margin: 0 0 12px; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.tool { display: flex; flex-direction: column; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; text-decoration: none; color: var(--ink); transition: transform .15s, box-shadow .15s; }
+.tool:hover, .tool:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--acid); }
+.tool .type { font-size: .78rem; letter-spacing: .1em; font-weight: 700; color: var(--muted); }
+.tool h3 { margin: 0; font-size: 1.12rem; }
+.tool p { margin: 0; color: var(--muted); font-size: .92rem; }
+.tool .ep { margin-top: auto; padding-top: 6px; font-size: .82rem; color: var(--ink); }

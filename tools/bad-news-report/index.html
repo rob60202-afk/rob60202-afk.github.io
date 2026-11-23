@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="向主管或業主回報壞消息的四段式範本:發生什麼、影響多大、有哪些做法、需要您決定什麼。填完自動產生可以直接傳送的文字。">
+  <meta name="theme-color" content="#0a1421">
+  <title>進度落後回報範本</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink: #0a1421; --muted: #526171; --paper: #f4f2ed; --card: #fff; --acid: #b7f33d; --line: rgba(10, 20, 33, .15); --warn: #c8452f; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+    .shell { width: min(860px, calc(100% - 32px)); margin-inline: auto; }
+    header.top { padding: 28px 0 8px; }
+    .back { font-size: .9rem; color: var(--muted); text-decoration: none; }
+    h1 { font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.2; margin: 14px 0 10px; text-wrap: balance; }
+    .lead { color: var(--muted); margin: 0; max-width: 62ch; }
+    .rule { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--acid); border-radius: 10px; padding: 14px 16px; margin: 18px 0; }
+    .rule strong { display: block; margin-bottom: 4px; }
+    .rule ul, .rule ol { margin: 0; padding-left: 1.2em; }
+    .layout { display: grid; gap: 22px; grid-template-columns: 1fr; margin: 10px 0 30px; }
+    @media (min-width: 900px) { .shell.wide { width: min(1180px, calc(100% - 48px)); } .layout { grid-template-columns: 1fr 1fr; align-items: start; } .out { position: sticky; top: 16px; } }
+    fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 14px 16px 6px; margin: 0 0 14px; }
+    legend { font-weight: 700; padding: 0 6px; }
+    label { display: block; font-weight: 500; margin: 0 0 4px; }
+    .hint { display: block; color: var(--muted); font-size: .86rem; font-weight: 400; margin-bottom: 6px; }
+    input, textarea { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); margin-bottom: 12px; }
+    textarea { min-height: 84px; resize: vertical; }
+    input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--acid); outline-offset: 2px; }
+    .req { color: var(--warn); font-size: .8rem; margin-left: 4px; }
+    .out h2 { font-size: 1.1rem; margin: 0 0 8px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 0; font-family: inherit; min-height: 180px; }
+    .missing { color: var(--warn); font-size: .9rem; margin: 8px 0 0; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .actions button { font: inherit; font-weight: 700; padding: 12px 18px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+    .actions .ghost { background: transparent; color: var(--ink); }
+    .tips { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .tips h2 { font-size: 1.05rem; margin: 0 0 6px; }
+    .tips ul { margin: 0; padding-left: 1.2em; }
+    footer { color: var(--muted); font-size: .85rem; padding: 10px 0 60px; }
+  </style>
+</head>
+<body>
+  <header class="top shell wide">
+    <a class="back" href="../">← 全部工具</a>
+    <h1>進度落後回報範本</h1>
+    <p class="lead">壞消息要自己先報,而且要帶著選項去。填好四段,下面就是可以直接傳的訊息。</p>
+    <div class="rule"><strong>四段式回報:</strong><ol><li>發生什麼:只講事實,不先講理由。</li><li>影響多大:工期、成本、品質,哪一項受影響、影響多少。</li><li>有哪些做法:至少兩個選項,各自的代價。</li><li>需要您決定什麼:請對方做的決定,以及最晚什麼時候要決定。</li></ol></div>
+  </header>
+  <main class="shell wide">
+    <div class="layout">
+      <form id="form" autocomplete="off"></form>
+      <section class="out" aria-labelledby="out-title">
+        <h2 id="out-title">產生的內容</h2>
+        <pre id="out" aria-live="polite"></pre>
+        <p class="missing" id="missing"></p>
+        <div class="actions">
+          <button type="button" id="copy">複製文字</button>
+          <button type="button" class="ghost" id="reset">清空重填</button>
+        </div>
+        <div class="tips"><h2>小提醒</h2><ul><li>發現當天就報,不要等到被問。</li><li>先講事實,理由放在後面一句話帶過。</li><li>沒有選項的壞消息,等於把問題丟給對方。</li><li>口頭講完,再用這段文字留一份書面。</li></ul></div>
+      </section>
+    </div>
+    <footer>本範本為通用溝通格式。涉及合約、費用或工期變更的事項,以雙方正式文件與合約約定為準。填寫內容只存在你這台裝置的瀏覽器裡,不會上傳。</footer>
+  </main>
+  <script>
+    (function () {
+      var CONFIG = {"key": "bad-news-report-v1", "groups": [{"title": "基本資料", "fields": [{"id": "to", "label": "給誰", "placeholder": "例:王經理", "required": true, "suffix": "您好:"}, {"id": "project", "label": "工程或案件名稱", "placeholder": "例:二樓空壓配管工程", "prefix": "關於", "suffix": ",有一件事需要先跟您報告。"}, {"id": "from", "label": "你的名字", "placeholder": "例:阿樹"}]}, {"title": "一、發生什麼", "fields": [{"id": "fact", "label": "事實", "hint": "時間、地點、什麼東西出了什麼狀況。先不講理由。", "placeholder": "例:不鏽鋼管件供應商通知,原訂週三到貨的管件延到下週一。", "multiline": true, "required": true}, {"id": "cause", "label": "原因(一句話就好)", "placeholder": "例:原廠出貨延誤。", "prefix": "原因:"}]}, {"title": "二、影響多大", "fields": [{"id": "impact_time", "label": "工期影響", "placeholder": "例:配管完成日從 12/10 延到 12/13,晚三天。", "required": true, "prefix": "工期:"}, {"id": "impact_cost", "label": "成本影響", "placeholder": "例:如果要趕回來,需要兩個晚上的加班。", "prefix": "成本:"}, {"id": "impact_other", "label": "其他影響", "placeholder": "例:後續的保壓測試要順延。", "prefix": "其他:"}]}, {"title": "三、有哪些做法", "fields": [{"id": "opt_a", "label": "做法一與代價", "placeholder": "例:接受晚三天,不增加費用。", "multiline": true, "required": true, "prefix": "做法一:"}, {"id": "opt_b", "label": "做法二與代價", "placeholder": "例:週末加班趕回兩天,加班費另計,需要您同意。", "multiline": true, "required": true, "prefix": "做法二:"}, {"id": "opt_c", "label": "做法三與代價(選填)", "multiline": true, "prefix": "做法三:"}, {"id": "recommend", "label": "我建議", "placeholder": "例:建議做法二,理由是後面的停機窗口不能動。", "prefix": "我的建議:"}]}, {"title": "四、需要您決定什麼", "fields": [{"id": "decision", "label": "請對方決定的事", "placeholder": "例:是否同意週末加班。", "required": true}, {"id": "deadline", "label": "最晚什麼時候要決定", "placeholder": "例:明天(週四)中午前。", "required": true, "prefix": "請在這個時間前回覆:"}]}], "output": [{"heading": "", "fields": ["to", "project"], "optional": true}, {"heading": "【發生什麼】", "fields": ["fact", "cause"]}, {"heading": "【影響】", "fields": ["impact_time", "impact_cost", "impact_other"]}, {"heading": "【可以怎麼做】", "fields": ["opt_a", "opt_b", "opt_c", "recommend"]}, {"heading": "【需要您決定】", "fields": ["decision", "deadline"]}, {"heading": "", "fields": ["from"], "optional": true}], "byId": {"to": {"id": "to", "label": "給誰", "placeholder": "例:王經理", "required": true, "suffix": "您好:"}, "project": {"id": "project", "label": "工程或案件名稱", "placeholder": "例:二樓空壓配管工程", "prefix": "關於", "suffix": ",有一件事需要先跟您報告。"}, "from": {"id": "from", "label": "你的名字", "placeholder": "例:阿樹"}, "fact": {"id": "fact", "label": "事實", "hint": "時間、地點、什麼東西出了什麼狀況。先不講理由。", "placeholder": "例:不鏽鋼管件供應商通知,原訂週三到貨的管件延到下週一。", "multiline": true, "required": true}, "cause": {"id": "cause", "label": "原因(一句話就好)", "placeholder": "例:原廠出貨延誤。", "prefix": "原因:"}, "impact_time": {"id": "impact_time", "label": "工期影響", "placeholder": "例:配管完成日從 12/10 延到 12/13,晚三天。", "required": true, "prefix": "工期:"}, "impact_cost": {"id": "impact_cost", "label": "成本影響", "placeholder": "例:如果要趕回來,需要兩個晚上的加班。", "prefix": "成本:"}, "impact_other": {"id": "impact_other", "label": "其他影響", "placeholder": "例:後續的保壓測試要順延。", "prefix": "其他:"}, "opt_a": {"id": "opt_a", "label": "做法一與代價", "placeholder": "例:接受晚三天,不增加費用。", "multiline": true, "required": true, "prefix": "做法一:"}, "opt_b": {"id": "opt_b", "label": "做法二與代價", "placeholder": "例:週末加班趕回兩天,加班費另計,需要您同意。", "multiline": true, "required": true, "prefix": "做法二:"}, "opt_c": {"id": "opt_c", "label": "做法三與代價(選填)", "multiline": true, "prefix": "做法三:"}, "recommend": {"id": "recommend", "label": "我建議", "placeholder": "例:建議做法二,理由是後面的停機窗口不能動。", "prefix": "我的建議:"}, "decision": {"id": "decision", "label": "請對方決定的事", "placeholder": "例:是否同意週末加班。", "required": true}, "deadline": {"id": "deadline", "label": "最晚什麼時候要決定", "placeholder": "例:明天(週四)中午前。", "required": true, "prefix": "請在這個時間前回覆:"}}};
+      var KEY = CONFIG.key;
+      var data = {};
+      try { data = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { data = {}; }
+      function save() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* 無法儲存時仍可使用 */ } }
+      var form = document.getElementById('form');
+      CONFIG.groups.forEach(function (g) {
+        var fs = document.createElement('fieldset');
+        var lg = document.createElement('legend'); lg.textContent = g.title; fs.appendChild(lg);
+        g.fields.forEach(function (f) {
+          var lab = document.createElement('label'); lab.htmlFor = 'f-' + f.id; lab.textContent = f.label;
+          if (f.required) { var r = document.createElement('span'); r.className = 'req'; r.textContent = '必填'; lab.appendChild(r); }
+          fs.appendChild(lab);
+          if (f.hint) { var h = document.createElement('span'); h.className = 'hint'; h.textContent = f.hint; fs.appendChild(h); }
+          var el = document.createElement(f.multiline ? 'textarea' : 'input');
+          el.id = 'f-' + f.id; el.placeholder = f.placeholder || '';
+          el.value = data[f.id] || '';
+          el.addEventListener('input', function () { data[f.id] = el.value; save(); render(); });
+          fs.appendChild(el);
+        });
+        form.appendChild(fs);
+      });
+      function val(id) { return (data[id] || '').trim(); }
+      function render() {
+        var lines = [], missing = [];
+        CONFIG.output.forEach(function (sec) {
+          if (sec.text) { lines.push(sec.text); return; }
+          var parts = sec.fields.map(function (id) {
+            var f = CONFIG.byId[id], v = val(id);
+            if (!v && f.required) missing.push(f.label);
+            if (!v) return '';
+            return (f.prefix || '') + v + (f.suffix || '');
+          }).filter(Boolean);
+          if (!parts.length && sec.optional) return;
+          if (sec.heading) lines.push(sec.heading);
+          if (parts.length) parts.forEach(function (p) { lines.push(p); });
+          else lines.push(sec.empty || '(待填)');
+          lines.push('');
+        });
+        document.getElementById('out').textContent = lines.join('\n').trim();
+        document.getElementById('missing').textContent = missing.length ? '還沒填:' + missing.join('、') : '';
+      }
+      document.getElementById('copy').addEventListener('click', function () {
+        var text = document.getElementById('out').textContent, btn = this;
+        function done() { btn.textContent = '已複製'; setTimeout(function () { btn.textContent = '複製文字'; }, 1500); }
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+        else fallback();
+        function fallback() { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { /* 無法複製 */ } document.body.removeChild(t); }
+      });
+      document.getElementById('reset').addEventListener('click', function () {
+        if (!window.confirm('確定要清空所有欄位嗎?')) return;
+        data = {}; save();
+        form.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+        render();
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>
