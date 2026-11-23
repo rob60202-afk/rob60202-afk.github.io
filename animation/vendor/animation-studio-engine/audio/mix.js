@@ -1,0 +1,224 @@
+// Mixing + mastering helpers: sidechain pump, gates, master bus, WAV writer.
+const fs = require('fs');
+const path = require('path');
+const { SR, Bus, OnePole, SVF } = require('./dsp');
+
+// Duck buses on every kick (the "pump" of dance music). kickTimes in seconds.
+function sidechain(buses, kickTimes, { depth = 0.55, release = 0.11, n } = {}) {
+  n = n || buses[0].n;
+  const g = new Float32Array(n).fill(1);
+  for (const tk of kickTimes) {
+    const s = Math.round(tk * SR);
+    for (let i = 0; i < SR * 0.5 && s + i < n; i++) {
+      const x = i / SR;
+      const v = 1 - depth * Math.exp(-x / release) * Math.min(1, x / 0.004 + 0.3);
+      if (v < g[s + i]) g[s + i] = v;
+    }
+  }
+  for (const b of buses) for (let i = 0; i < n; i++) { b.L[i] *= g[i]; b.R[i] *= g[i]; }
+}
+
+// Hard silence between t0..t1 (the "held breath" before a drop). Applied AFTER reverbs.
+function gate(bus, t0, t1, fade = 0.008) {
+  for (let i = 0; i < bus.n; i++) {
+    const t = i / SR;
+    let g = 1;
+    if (t >= t0 - fade && t < t1) g = t < t0 ? 1 - (t - (t0 - fade)) / fade : 0;
+    if (g !== 1) { bus.L[i] *= g; bus.R[i] *= g; }
+  }
+}
+
+function fadeOut(bus, t0, t1) {
+  for (let i = 0; i < bus.n; i++) {
+    const t = i / SR;
+    if (t <= t0) continue;
+    const g = Math.max(0, 1 - (t - t0) / (t1 - t0));
+    bus.L[i] *= g; bus.R[i] *= g;
+  }
+}
+
+function highpass(bus, hz = 22) {
+  const hl = new OnePole(), hr = new OnePole();
+  for (let i = 0; i < bus.n; i++) { bus.L[i] = hl.hp(bus.L[i], hz); bus.R[i] = hr.hp(bus.R[i], hz); }
+}
+
+// True peak: the waveform between two samples can swing higher than either sample, and every
+// resampler / AAC encoder reconstructs those in-between values. Estimate them like a BS.1770
+// true-peak meter: 4x oversampling with a Hann-windowed sinc (12 taps per phase).
+const TP_PHASES = [0.25, 0.5, 0.75].map((f) => {
+  const h = [];
+  for (let k = -5; k <= 6; k++) { const x = k - f; h.push((Math.sin(Math.PI * x) / (Math.PI * x)) * 0.5 * (1 + Math.cos((Math.PI * x) / 6.5))); }
+  const sum = h.reduce((a, v) => a + v, 0);
+  return h.map((v) => v / sum);
+});
+function truePeakAt(x, i) {
+  let pk = Math.abs(x[i]);
+  if (i < 5 || i + 6 >= x.length) return pk;
+  for (const h of TP_PHASES) {
+    let s = 0;
+    for (let k = 0; k < 12; k++) s += x[i - 5 + k] * h[k];
+    if (s > pk) pk = s; else if (-s > pk) pk = -s;
+  }
+  return pk;
+}
+
+// Integrated loudness in LUFS (ITU-R BS.1770 / EBU R128): K-weighting (a high shelf + a high pass,
+// 48 kHz coefficients), 400 ms blocks every 100 ms, an absolute gate at -70 LUFS and a relative gate
+// 10 LU below. Matches ffmpeg's ebur128 to within ~0.1 LU.
+function lufs(b) {
+  const N = b.n, block = Math.round(0.4 * SR), hop = Math.round(0.1 * SR);
+  const kw = (x) => {
+    const y = new Float64Array(x.length);
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0, z1 = 0, z2 = 0, w1 = 0, w2 = 0;
+    for (let i = 0; i < x.length; i++) {
+      const v = 1.53512485958697 * x[i] - 2.69169618940638 * x1 + 1.19839281085285 * x2 + 1.69065929318241 * y1 - 0.73248077421585 * y2;
+      x2 = x1; x1 = x[i]; y2 = y1; y1 = v;
+      const u = v - 2 * z1 + z2 + 1.99004745483398 * w1 - 0.99007225036621 * w2;
+      z2 = z1; z1 = v; w2 = w1; w1 = u;
+      y[i] = u * u;
+    }
+    return y;
+  };
+  const L = kw(b.L), R = kw(b.R);
+  const cum = new Float64Array(N + 1);
+  for (let i = 0; i < N; i++) cum[i + 1] = cum[i] + L[i] + R[i];
+  const zs = [];
+  for (let s = 0; s + block <= N; s += hop) zs.push((cum[s + block] - cum[s]) / block);
+  const ld = (z) => -0.691 + 10 * Math.log10(z + 1e-20);
+  const abs = zs.filter((z) => ld(z) > -70);
+  if (!abs.length) return -Infinity;
+  const rel = ld(abs.reduce((a, z) => a + z, 0) / abs.length) - 10;
+  const g = abs.filter((z) => ld(z) > rel);
+  return ld(g.reduce((a, z) => a + z, 0) / g.length);
+}
+
+// Glue compressor + 4ms lookahead brickwall limiter. drive ~0.8 lands near -13 LUFS for a busy mix.
+// ceiling is a TRUE-peak ceiling: 0.84 ≈ -1.5 dBTP, so uploads (AAC, platform resampling) never clip.
+// { truePeak: false } restores the old sample-peak limiter (v0.2 behaviour, used with ceiling 0.93).
+// { lufs: -14 } finds the drive that lands the master at that integrated loudness (±0.2 LU) instead.
+function master(b, drive = 0.8, ceiling = 0.84, { truePeak = true, lufs: target = null } = {}) {
+  if (target !== null && target !== undefined && Number.isFinite(target)) {
+    const src = { L: Float32Array.from(b.L), R: Float32Array.from(b.R), n: b.n };
+    let d = drive, got = 0;
+    for (let k = 0; k < 6; k++) {
+      b.L.set(src.L); b.R.set(src.R);
+      masterOnce(b, d, ceiling, truePeak);
+      got = lufs(b);
+      if (Math.abs(got - target) <= 0.2) break;
+      d *= Math.pow(10, (target - got) / 20) * (got < target ? 1.05 : 1); // limiting eats part of every boost
+    }
+    master.last = { drive: d, lufs: got };
+    return master.last;
+  }
+  masterOnce(b, drive, ceiling, truePeak);
+  return { drive };
+}
+function masterOnce(b, drive, ceiling, truePeak) {
+  const N = b.n;
+  let env = 0;
+  for (let i = 0; i < N; i++) {
+    const l = b.L[i] * drive, r = b.R[i] * drive;
+    const lvl = Math.max(Math.abs(l), Math.abs(r));
+    env = lvl > env ? env + (lvl - env) * 0.002 : env + (lvl - env) * 0.00008;
+    const thr = 0.5;
+    const g = env > thr ? Math.pow(thr / env, 0.35) : 1;
+    b.L[i] = l * g; b.R[i] = r * g;
+  }
+  const la = Math.round(0.004 * SR);
+  const peak = new Float32Array(N);
+  if (truePeak) for (let i = 0; i < N; i++) peak[i] = Math.max(truePeakAt(b.L, i), truePeakAt(b.R, i));
+  else for (let i = 0; i < N; i++) peak[i] = Math.max(Math.abs(b.L[i]), Math.abs(b.R[i]));
+  const want = new Float32Array(N);
+  const dq = [];
+  let head = 0;
+  for (let i = 0; i < N + la; i++) {
+    if (i < N) { while (dq.length > head && peak[dq[dq.length - 1]] <= peak[i]) dq.pop(); dq.push(i); }
+    const j = i - la;
+    if (j >= 0) {
+      while (dq[head] < j - la) head++;
+      const pk = peak[dq[head]];
+      want[j] = pk > ceiling ? ceiling / pk : 1;
+    }
+  }
+  let g = 1;
+  for (let i = 0; i < N; i++) {
+    g = want[i] < g ? want[i] : g + (want[i] - g) * 0.0006;
+    b.L[i] = Math.max(-ceiling, Math.min(ceiling, b.L[i] * g));
+    b.R[i] = Math.max(-ceiling, Math.min(ceiling, b.R[i] * g));
+  }
+}
+
+// Lo-fi tape: slow wow + fast flutter (a modulated delay line), a gentle low-pass and soft saturation.
+// Apply to the whole mix (before master) or to a single bus.
+function lofi(bus, { wow = 1, flutter = 1, lowpass = 5200, sat = 1.2 } = {}) {
+  const n = bus.n, L = Float32Array.from(bus.L), R = Float32Array.from(bus.R);
+  const fl = new SVF(), fr = new SVF();
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const d = (0.006 + 0.0028 * wow * Math.sin(2 * Math.PI * 0.55 * t) + 0.00022 * flutter * Math.sin(2 * Math.PI * 7.3 * t)) * SR;
+    const p = i - d, i0 = Math.floor(p), fr0 = p - i0;
+    const a = i0 >= 0 && i0 + 1 < n ? 1 : 0;
+    const l = a ? L[i0] * (1 - fr0) + L[i0 + 1] * fr0 : 0, r = a ? R[i0] * (1 - fr0) + R[i0 + 1] * fr0 : 0;
+    bus.L[i] = Math.tanh(fl.lp(l, lowpass, 0.6) * sat) / sat;
+    bus.R[i] = Math.tanh(fr.lp(r, lowpass, 0.6) * sat) / sat;
+  }
+  return bus;
+}
+
+// Duck the music under a voice (or any bus): follows the voice's envelope, so the music dips only while
+// someone is talking. depth 0.6 = about -8 dB.
+function duck(buses, key, { depth = 0.6, attack = 0.015, release = 0.25, threshold = 0.02 } = {}) {
+  const n = key.n, g = new Float32Array(n);
+  let env = 0;
+  const a = Math.exp(-1 / (attack * SR)), r = Math.exp(-1 / (release * SR));
+  for (let i = 0; i < n; i++) {
+    const x = Math.max(Math.abs(key.L[i]), Math.abs(key.R[i]));
+    env = x > env ? a * env + (1 - a) * x : r * env + (1 - r) * x;
+    g[i] = 1 - depth * Math.min(1, env / threshold);
+  }
+  for (const b of buses) for (let i = 0; i < Math.min(n, b.n); i++) { b.L[i] *= g[i]; b.R[i] *= g[i]; }
+}
+
+// Load any audio file (mp3, wav, m4a…) as a stereo Bus at 48 kHz: your own song, a recorded voice.
+// { at: seconds to start it at, gain, length: total seconds of the bus (default: the file + at) }
+function loadAudio(file, { at = 0, gain = 1, length } = {}) {
+  const r = require('child_process').spawnSync(process.env.FFMPEG || 'ffmpeg', ['-v', 'error', '-i', file, '-f', 'f32le', '-ac', '2', '-ar', String(SR), '-'], { maxBuffer: 2 ** 31 });
+  if (r.status !== 0) throw new Error(`could not decode ${file}: ${String(r.stderr).trim()}`);
+  const x = new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset, r.stdout.byteOffset + r.stdout.length));
+  const frames = x.length / 2, off = Math.round(at * SR);
+  const b = new Bus(Math.max(Math.ceil((length || 0) * SR), off + frames));
+  for (let i = 0; i < frames && off + i < b.n; i++) { if (off + i < 0) continue; b.L[off + i] = x[2 * i] * gain; b.R[off + i] = x[2 * i + 1] * gain; }
+  return b;
+}
+
+// 32-bit float stereo WAV
+function writeWav(file, b) {
+  const n = b.n;
+  const data = Buffer.alloc(n * 8);
+  for (let i = 0; i < n; i++) { data.writeFloatLE(b.L[i], i * 8); data.writeFloatLE(b.R[i], i * 8 + 4); }
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
+  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(3, 20); h.writeUInt16LE(2, 22);
+  h.writeUInt32LE(SR, 24); h.writeUInt32LE(SR * 8, 28); h.writeUInt16LE(8, 32); h.writeUInt16LE(32, 34);
+  h.write('data', 36); h.writeUInt32LE(data.length, 40);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, Buffer.concat([h, data]));
+}
+
+// Sum named stems into one bus with a gain table; optionally write each (gained) stem.
+function mixdown(stems, gains, { stemDir = null } = {}) {
+  const first = Object.values(stems)[0];
+  const out = new Bus(first.n);
+  for (const [k, b] of Object.entries(stems)) {
+    const g = gains[k] ?? 1;
+    b.mixInto(out, g);
+    if (stemDir) {
+      const s = new Bus(b.n);
+      for (let i = 0; i < b.n; i++) { s.L[i] = b.L[i] * g; s.R[i] = b.R[i] * g; }
+      writeWav(path.join(stemDir, `stem-${k}.wav`), s);
+    }
+  }
+  return out;
+}
+
+module.exports = { sidechain, gate, fadeOut, highpass, master, lufs, lofi, duck, loadAudio, writeWav, mixdown };

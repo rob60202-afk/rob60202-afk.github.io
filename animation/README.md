@@ -1,79 +1,113 @@
-# 故事動畫自動製作流程
+# 動畫製作手冊
 
-把一份故事腳本(JSON)自動做成有配音、字幕、鏡頭推移的動態漫畫影片。
+「工程現場故事」每一集都是程式畫出來的:畫面用程式逐格繪製,音樂用程式合成,配音用 Google 語音(gTTS)。不用買素材,不用 AI 繪圖額度。
 
-## 使用方式
+這份手冊給之後接手的人(或新的 Claude 工作階段)看:照著做,就能把任何一集重新算出來,或做出新的一集。
+
+## 一、資料夾
+
+```
+animation/
+├── films/<集名>/        每一集一個資料夾
+│   ├── lines.js          台詞(一句一行;who: 'shu' 阿樹、'master' 陳師傅,沒寫就是旁白)
+│   ├── prep-voice.js     先合成每句配音、量出長度 → durations.js
+│   ├── durations.js      每句配音的秒數(自動產生,有進版控)
+│   ├── score.js          時間軸:每句台詞、每個動作、每個音效的時間點,全片唯一的時間來源
+│   ├── song.js           合成音樂並混入配音 → out/music.wav
+│   ├── film.js           畫面:給一個時間點,畫出那一格
+│   ├── index.html        算圖時在瀏覽器裡載入上面這些
+│   ├── engine/           繪圖引擎(不在版控內,用還原指令複製進來)
+│   └── out/              輸出的影片與檢查圖(不在版控內)
+├── vendor/animation-studio-engine/   繪圖引擎的正本(MIT 授權,見資料夾內 LICENSE)
+├── lib/                  長片共用的工具(長片做法見 lib/LONGFORM.md)
+├── tools/piper           配音轉接程式:引擎呼叫 piper 時,實際用 gTTS 合成
+├── tools/restore-engines.sh
+└── series/               題庫、腳本、審查紀錄、上架資料
+```
+
+## 二、換到新的工作環境時
+
+雲端環境會被回收,各集的 `engine/` 與 `out/` 不在版控內。新環境先做:
 
 ```bash
 pip install gTTS
 ```
 
 ```bash
-python3 animation/make_video.py animation/stories/001-crooked-chair.json
+bash animation/tools/restore-engines.sh
 ```
 
-加上 `--vertical` 會輸出 9:16 的短影音版本。
+需要 Node 22 以上、ffmpeg、Chromium(雲端環境已內建)。還原程式會提醒缺了什麼。
 
-成品在 `animation/output/<故事編號>/`:
+## 三、做一集 60 秒短片(直式 9:16)
 
-| 檔案 | 用途 |
-|---|---|
-| `<編號>.mp4` | 成品影片(字幕已燒入) |
-| `<編號>.srt` | 字幕檔,上傳 YouTube 時可另外掛上 |
-| `upload.txt` | 標題、說明、標籤與上傳提醒 |
+以下指令都在該集的資料夾裡執行。
 
-## 寫新故事
+1. **建立資料夾。** 複製上一集的 `lines.js`、`prep-voice.js`、`score.js`、`song.js`、`film.js`、`index.html`、`package.json`,不要複製 `out/`;再跑一次還原指令補上 `engine/`。
+2. **寫台詞。** 改 `lines.js`,內容取自 `series/` 底下的腳本。
+3. **量配音長度。**
 
-複製 `stories/001-crooked-chair.json` 改內容即可:
+   ```bash
+   PATH=../../tools:$PATH PIPER_MODEL=zh-TW node prep-voice.js
+   ```
 
-- `characters`:固定角色的外觀描述(英文)。在每一幕的 `image` 裡寫代號(如 `MASTER`),程式會自動換成完整描述,讓角色長相前後一致。
-- `style`:全片共用的畫風描述。
-- `seed`:固定數字,同一支片不要改,畫風才會穩定。
-- `scenes`:每一幕一段旁白(`narration`)加一張圖的描述(`image`)。
+4. **排時間軸、畫畫面。** 改 `score.js` 與 `film.js`。角色造型沿用前幾集,定義在 `film.js` 開頭的 `CAST`:
 
-## 流程分工
+   | 角色 | 造型 | 配音 |
+   |---|---|---|
+   | 阿樹 | 白 T、灰長褲、黑髮、瘦,進現場戴黃色安全帽 | `zh-TW,pitch=1.08` |
+   | 陳師傅 | 綠襯衫、咖啡長褲、灰髮、圓眼鏡、小鬍子、壯,進現場戴白色安全帽 | `zh-TW,pitch=0.86` |
+   | 旁白 | | `zh-TW` |
+   | 其他男性 | | `zh-TW,pitch=0.94` |
+   | 其他女性 | | `zh-TW,pitch=1.15` |
 
-| 步驟 | 工具 | 是否自動 |
-|---|---|---|
-| 腳本與分鏡 | Claude | 自動產出,人工審稿 |
-| 配音 | Google 語音(gTTS) | 自動 |
-| 繪圖 | Pollinations | 自動(免費版每 45 秒 1 張) |
-| 鏡頭、字幕、合成 | ffmpeg | 自動 |
-| 審片、封面、上傳 | 人工 | 手動 |
+5. **合成音樂與配音。**
 
-圖片與配音會快取在 `animation/.cache/`,中斷後重跑會從斷點接續;想重畫某一幕,刪掉對應的 `imageNN.jpg` 再跑一次。
+   ```bash
+   PATH=../../tools:$PATH PIPER_MODEL=zh-TW node song.js
+   ```
 
-## 人物會動的動畫短片(`films/`)
+6. **先看檢查圖,再算整支。** 檢查圖很快,畫面有問題先在這一步改。
 
-`films/` 底下每個資料夾是一支用 animation-studio 外掛製作的短片,角色、場景與動作都由程式繪製,人物會走路、做手勢、對嘴。
+   ```bash
+   node engine/render.js sheet
+   ```
 
-| 檔案 | 內容 |
-|---|---|
-| `lines.js` | 旁白台詞 |
-| `score.js` | 時間軸(畫面與聲音共用) |
-| `song.js` | 配樂、音效與配音 |
-| `film.js` | 每一幕的角色與場景 |
+   ```bash
+   node engine/render.js video
+   ```
 
-引擎(`engine/`)與成品(`out/`)不進版控。重新製作時先用外掛的 `new-project.js` 建一個同格式的專案,把 `engine/` 複製進來,再執行:
+   ```bash
+   node engine/render.js mux field-0X
+   ```
 
-```bash
-cd animation/films/crooked-chair
-```
+7. **轉成上傳用的檔案。**
 
-```bash
-PATH=../../tools:$PATH PIPER_MODEL=zh-TW node prep-voice.js
-```
+   ```bash
+   ffmpeg -y -v error -i out/field-0X.mp4 -c:v libx264 -crf 21 -preset medium -c:a copy -movflags +faststart out/field-0X-web.mp4
+   ```
 
-```bash
-PATH=../../tools:$PATH PIPER_MODEL=zh-TW node song.js
-```
+雲端環境只有 4 核心,同時算圖最多兩支,不然每一支都會變很慢。
 
-```bash
-node engine/render.js video
-```
+## 四、驗收標準
 
-```bash
-node engine/render.js mux
-```
+每一集交出去之前,從成品影片抽格做一張總覽圖,逐項看:
 
-`tools/piper` 是配音轉接程式,讓引擎改用 Google 語音(gTTS)產生台灣中文旁白。
+- [ ] 字幕每一句都看得到,不被角色或道具擋住,也不超出畫面
+- [ ] 角色的臉沒有被字卡或道具蓋住
+- [ ] 嘴型只在該角色講話時動
+- [ ] 工安畫面是正確示範:進現場戴安全帽,高處作業有扣安全帶;錯誤示範只出現在故事的「出事前」,而且結尾一定有正確做法
+- [ ] 沒有任何真實公司、品牌、業主名稱,沒有可辨識的真實單價
+- [ ] 技術數值、法規、測試壓力沒有寫成定論;需要時寫「依規範」「依合約」
+- [ ] 長度 45–60 秒,結尾卡有教訓那一句
+
+## 五、內容規則
+
+1. 所有故事、人物、公司都是虛構的。
+2. 技術內容發佈前必須由有實務經驗的人審過,`series/` 裡標「待確認」的內容不可以寫成事實。
+3. 每一集搭配一個免費工具(在網站的 `tools/`),上架資料在 `series/upload-batch*.md`。
+4. 長片腳本要先經過三方審查(現場、技術、觀眾三種觀點),審查紀錄放在 `series/long/`。
+
+## 六、舊流程(已停用)
+
+`make_video.py` 與 `stories/` 是最早的做法:用免費 AI 繪圖產生靜態圖,再加配音與鏡頭推移。免費繪圖服務有浮水印、人物前後不一致,所以停用,保留做紀錄。
