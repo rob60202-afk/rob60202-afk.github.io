@@ -89,6 +89,26 @@ bash animation/tools/restore-engines.sh
 
 雲端環境只有 4 核心,同時算圖最多兩支,不然每一支都會變很慢。
 
+## 三之一、換成付費配音(可以一句一句換)
+
+`tools/piper` 會先找 `voice-cache/` 裡有沒有這一句的錄音,有就用,沒有才用免費的 gTTS。所以不用改任何一集的程式。
+
+1. 列出一集每一句的代號與狀態:
+
+   ```bash
+   python3 animation/tools/voice_key.py list animation/films/field-01-quotation
+   ```
+
+2. 用付費語音服務產生該句的錄音(例如 Creative Claw 的台灣口音聲音),下載後放進快取:
+
+   ```bash
+   python3 animation/tools/voice_key.py put "zh-TW" "這麼高,你的高空車,算在哪一行?" 下載的檔案.mp3
+   ```
+
+3. 回到該集資料夾,重跑 `prep-voice.js`、`song.js`,再算圖。配音長度變了,時間軸會跟著自動調整。
+
+代號只看語言與文字,不看音高設定;同一句文字在不同集會共用同一個錄音。付費錄音有花錢,`voice-cache/` 要進版控。
+
 ## 四、驗收標準
 
 每一集交出去之前,從成品影片抽格做一張總覽圖,逐項看:

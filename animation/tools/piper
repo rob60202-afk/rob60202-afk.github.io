@@ -3,15 +3,29 @@
 
 --model 的寫法:語言[,pitch=音高倍率][,speed=語速倍率][,slow]
 例:zh-TW、en,pitch=0.88、en,slow
+
+付費配音:如果 animation/voice-cache/ 裡有這一句的錄音(檔名是 voice_key.py 算出來的代號),
+就直接用那個檔案,不再呼叫 gTTS。沒有的句子照舊用 gTTS,所以可以一句一句換。
 """
-import subprocess, sys, tempfile, os
+import hashlib, subprocess, sys, tempfile, os
 args = sys.argv[1:]
 if "--help" in args or not args:
-    print("piper shim (gTTS)"); sys.exit(0)
-spec = (args[args.index("--model") + 1] if "--model" in args else "zh-TW").split(",")
+    print("piper shim (gTTS + voice cache)"); sys.exit(0)
+model = args[args.index("--model") + 1] if "--model" in args else "zh-TW"
+spec = model.split(",")
 lang, opts = spec[0], dict(o.split("=") if "=" in o else (o, "1") for o in spec[1:])
 out = args[args.index("--output_file") + 1]
 text = sys.stdin.read().strip()
+
+cache = os.environ.get("VOICE_CACHE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "voice-cache"))
+# 代號只看語言與文字,不看音高與語速:量長度(prep-voice)和混音(song)用同一個檔
+key = hashlib.sha1(f"{lang}\n{text}".encode("utf-8")).hexdigest()[:16]
+for ext in (".mp3", ".wav"):
+    hit = os.path.join(cache, key + ext)
+    if os.path.exists(hit):
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", hit, "-ar", "48000", "-ac", "1", out], check=True)
+        sys.exit(0)
+
 pitch = float(opts.get("pitch", 1))
 speed = float(opts.get("speed", os.environ.get("VOICE_SPEED", "1.25") if lang.startswith("zh") else 1.0))
 from gtts import gTTS
