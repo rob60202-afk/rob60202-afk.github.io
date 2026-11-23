@@ -22,8 +22,11 @@
  * KIT.onSite(style, helmetColor, vest)  任何造型 → 工地版(安全帽 + 頤帶 + 背心)
  * KIT.person(ctx, o)            = Ch.person + style.headwear 'helmet'(含頤帶)+ style.vest 背心
  *                                 + o.harness {clip:[x,y]} 全身式安全帶,掛鉤扣在頭上方的錨點
+ *                                 (kit 載入時會把 Ch.headwear 包一層,多認得 'helmet';其他帽子照舊)
  * KIT.hand(px, py, s, sx, wx, wy)  畫面座標 → 角色 handL/handR 的目標(角色自己的單位)
+ * KIT.world(o, lx, ly)          角色身上的點(角色自己的單位)→ 畫面座標
  * KIT.headPos(o)                角色頭中心的畫面座標(放皇冠、對話框、字卡要避開臉時用)
+ * KIT.harness(ctx, o) · KIT.lanyard(ctx, o, clip) · KIT.snapHook(ctx, x, y, rot, s)  安全帶各部分(KIT.person 會自己畫)
  *
  * ── 共用小工具 ────────────────────────────────────────────────────────────────────────────────
  * KIT.lin / KIT.rad(ctx, …, stops)    線性 / 放射漸層      KIT.fill(ctx, x, y, w, h, style)
@@ -33,22 +36,25 @@
  * KIT.popIn(t, t0, d) 彈出(0 → 超過一點 → 1)· KIT.fadeIn(t, t0, d) · KIT.ease = U.ease
  * KIT.blink(t, seed) 眨眼 · KIT.mouth(VO, t, who, from) 對嘴(VO = out/voice.json;沒在講話回傳 null)
  * KIT.warm(ctx, o)               每個鏡頭最後一筆:左上暖光 + 底部壓暗(字幕更清楚)
- * KIT.stroke(ctx, pts, color, lw) 乾淨的筆畫 · KIT.tick(ctx, x, y, r, a) 綠底白勾 · KIT.cross(…) 紅叉
- * KIT.sparkle(ctx, x, y, r, a, rot) 閃光 · KIT.burst(ctx, x, y, r0, r1, a, n, color) 放射短線
+ * KIT.stroke(ctx, pts, color, lw) 乾淨的筆畫 · KIT.partial(pts, u) 折線只取前面 u · KIT.tick(ctx, x, y, r, a) 綠底白勾 · KIT.cross(…) 紅叉
+ * KIT.sparkle(ctx, x, y, r, a, rot) 閃光 · KIT.burst(ctx, x, y, r0, r1, a, n, color) 放射短線 · KIT.glow(ctx, x, y, r, color) 一團光
+ * KIT.cached(ctx, key, drawFn) 靜態圖層快取 · KIT.floorLines(ctx, col, seed, fy) 地板透視線 · KIT.pipeRun(ctx, x0, x1, y, th, color, seed) 一段管
  *
  * ── 背景(KIT.bg.*,畫滿整個畫面;靜態部分快取)────────────────────────────────────────────────
- * fab(ctx, t, {floor, top, pipeY, machines, cache})  廠房:H 型鋼柱、屋頂梁、頂上一排管線與吊架/支架、
- *                                                  機台一列、環氧地坪與黃色走道線。top < 0 = 很高的廠房(上搖用)
+ * fab(ctx, t, {floor, top, pipeY, machines, columns, hangers, duct, tray, x0, x1, cache})
+ *                                                  廠房:H 型鋼柱、屋頂梁、頂上一排管線與吊架(吊桿 + 槽鋼橫擔)、柱上托架、
+ *                                                  機台一列、環氧地坪與黃色走道線。top < 0 = 很高的廠房(上搖用);
+ *                                                  x0/x1 = 畫多寬(鏡頭拉遠時);duct/tray = 牆上中段的風管、電纜架
  * office(ctx, t, {night, clock, window})           小工程行辦公室(白天 / 晚上:窗外月亮、檯燈暖光)
  * clientOffice(ctx, t)                             甲方辦公室:冷色、大窗城市、玻璃隔間、植物
  * restArea(ctx, t)                                 休息區:護牆板、窗、「休息區」牌子、安全帽掛牆上
  * whiteboard(ctx, t, {box})                        工務所白板牆 → 回傳白板內框 {x,y,w,h}
  *
  * ── 道具 ──────────────────────────────────────────────────────────────────────────────────────
- * desk · monitor · keyboard · printer · lamp · wallClock(ctx, x, y, r, hours) · phone(ctx, …, screenFn)
- * chat(ctx, w, h, t, {title, msgs}) 通訊軟體畫面(不畫任何品牌)· stamp 蓋章 · shatter 字碎掉
- * crown 小皇冠 · envelope 信封 · cone 交通錐 · warnTape 警示帶 · extinguisher 滅火器
- * lift(ctx, x, y, s, h, o) 剪刀式高空作業車(護欄、錨點柱)· harness / lanyard / snapHook 安全帶
+ * desk(擋板)· officeChair · monitor · keyboard · printer · lamp · wallClock(ctx, x, y, r, hours) · phone(ctx, …, screenFn)
+ * chat(ctx, w, h, t, {title, msgs, hi}) 通訊軟體畫面(不畫任何品牌)· stamp 蓋章 · shatter 字裂開、碎掉
+ * crown 小皇冠 · envelope 信封 · cone 交通錐 · warnTape 警示帶 · extinguisher 滅火器 · hungHelmet 掛牆上的安全帽
+ * lift(ctx, x, y, s, h, o) 剪刀式高空作業車(護欄、錨點柱;回傳 deck 站點與 anchor 錨點)
  *
  * ── 介面(整片一直用)──────────────────────────────────────────────────────────────────────────
  * KIT.card(ctx, x, y, w, h, o)         撕紙卡片(可加膠帶)
@@ -57,13 +63,20 @@
  * KIT.checklist(ctx, t, spec)          勾選清單(check 打勾、cross 打叉)
  * KIT.chapterCard(ctx, t, t0, {n, title})  章卡,固定 KIT.CHAPTER = 1.2 秒
  * KIT.bubble(ctx, t, spec)             對話框 / 想法泡泡(think: true)
- * KIT.badge(ctx, t, {t0})              右上角常駐角標「金額皆為示意整數，非市場行情」
+ * KIT.badge(ctx, t, {t0, text})       右上角常駐角標「金額皆為示意整數，非市場行情」· KIT.badgeRect(ctx) 角標的位置
  * KIT.disclaimer(ctx, t, {t0, shrink}) 全螢幕字卡 → 縮成角標 → 之後一直是角標
  *
  * ── 字幕 ──────────────────────────────────────────────────────────────────────────────────────
  * KIT.buildCaptions(vo, {ph, maxChars}) 由 voice.json(+ durations.js 的 PH 停頓)切成一行一行的字幕:
- *                                      依標點切,「、」不切,短句合併,一行最多 maxChars 個全形字(預設 16)
+ *                                      依標點切,「、」不切,短句合併,一行最多 maxChars 個全形字(預設 16);
+ *                                      lines.js 的 display 可以用「|」指定換行的地方
  * KIT.drawCaption(ctx, t, caps)        畫在畫面底部安全框內(KIT.L.cap);旁白白字,角色台詞黃字
+ * KIT.capLength(str)                   字幕長度(全形字 = 1,半形 = 0.55)
+ *
+ * ── L003 的故事資料(每個單元都要一樣)──────────────────────────────────────────────────────────
+ * KIT.L003.TABLE1 / TABLE1_TITLE       【表 1】阿樹版報價單(附錄 A「阿樹版」)
+ * KIT.L003.QUOTE                       印出來的報價單(四行 + 含稅)
+ * KIT.L003.CREW_QUOTE / SHU_ASK        班長那一則報價訊息(含最後一行「以上純工資，不含……」小字)、阿樹的問句
  * ============================================================================================ */
 (function () {
   const U = globalThis.U, G = globalThis.G, Ch = globalThis.Ch, Subs = globalThis.Subs, Studio = globalThis.Studio;

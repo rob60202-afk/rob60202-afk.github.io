@@ -47,7 +47,7 @@ fx.addMono(I.glass(3, { size: 0.8 }), ev.shatter, 0.32); fx.addMono(I.thud(80, 0
 // 片名卡、章卡
 chime(['F4', 'A4', 'C5', 'F5'], ev.title + 0.12, 0.14, 0.32);
 fx.addMono(I.paperFwip(0.9), ev.ch1, 0.4);
-chime(['C5', 'E5', 'G5', 'C6'], ev.ch1 + 0.04, 0.09, 0.34);
+chime(['C5', 'E5', 'G5', 'C6'], ev.ch1, 0.09, 0.34);
 // 第 1 章:老闆丟圖、平面圖、拍胸脯、時鐘快轉
 fx.addMono(I.paperFwip(0.8), ev.toss, 0.5); fx.addMono(I.noiseSweep(0.35, 1800, 900, { q: 1.5, pink: true }), ev.toss + 0.55, 0.12);
 fx.addMono(I.scribble(ev.route[1] - ev.route[0]), ev.route[0], 0.1);
