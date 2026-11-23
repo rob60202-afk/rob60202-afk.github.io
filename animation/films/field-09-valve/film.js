@@ -428,7 +428,8 @@
     const tgt = [lerp(sweep[0], V1X, fu), lerp(sweep[1], PY - 50, fu)];
     const ang = Math.atan2(tgt[1] - hw[1], tgt[0] - hw[0]);
     let lens = [hw[0], hw[1]];
-    const scene = () => { roomBg(ctx, t); wallClock(ctx, 2.2); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0); plant(ctx, t, { v1: SHUT, flow: 0, seg: 'new' }); person(ctx, o); lens = flashlight(ctx, hw[0], hw[1], ang); };
+    const hrs = 2 + 10 / 60 + 2 * ease.inOutCubic(clamp((t - ev.hours[0]) / (ev.hours[1] - ev.hours[0]))); // 牆上的鐘跟左上角的時間一致
+    const scene = () => { roomBg(ctx, t); wallClock(ctx, hrs, true); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0); plant(ctx, t, { v1: SHUT, flow: 0, seg: 'new' }); person(ctx, o); lens = flashlight(ctx, hw[0], hw[1], ang); };
     view(ctx, c, () => {
       night(ctx, scene, { dark: 0.82, lights: [{ x: tgt[0], y: tgt[1], r: 100 }, { x: hw[0] + 30, y: hw[1] - 80, r: 125, inner: 0.5, warm: false }] });
       haze(ctx, lens, tgt, 100);
@@ -500,7 +501,8 @@
     if (t >= ev.blank && t < ev.say[0] + 0.65) {
       const a = popIn(t, ev.blank, 0.35) * (1 - clamp((t - (ev.say[0] + 0.35)) / 0.3));
       const hp = KIT.world({ x: SX, y: GROUND, s: 1 }, so.handR[0], so.handR[1]), [hx, hy] = toScr(c, hp[0], hp[1] + 40);
-      ctx.save(); ctx.globalAlpha *= clamp(a); ctx.setLineDash([12, 10]); stroke(ctx, [[hx + 6, hy - 30], [600, 650]], '#FFFFFF', 8); stroke(ctx, [[hx + 6, hy - 30], [600, 650]], INK, 3); ctx.restore();
+      const L0 = [hx + 34, hy - 26], L1 = [668, 640]; // 從牌子右邊拉到放大圖右下角:不經過阿樹的臉
+      ctx.save(); ctx.globalAlpha *= clamp(a); ctx.setLineDash([12, 10]); stroke(ctx, [L0, L1], '#FFFFFF', 8); stroke(ctx, [L0, L1], INK, 3); ctx.restore();
       ctx.save(); ctx.globalAlpha *= clamp(a); valveTag(ctx, 540, 238, 2.0 * Math.max(0.01, a), Math.sin(t * 1.8) * 0.02, { hi: 0, hiA: clamp((t - ev.say[0] + 0.1) / 0.3) }); ctx.restore();
     }
     // 師傅的三句話:三張小卡
@@ -706,7 +708,8 @@
       const last = out[out.length - 1], next = lines[i + 1];
       if (last) last.end = Math.min(last.end + 0.35, next ? next.t - 0.2 : Infinity);
     });
-    for (let k = 0; k + 1 < out.length; k++) if (out[k + 1].t - out[k].end < 0.6 && out[k + 1].t > out[k].t) out[k].end = Math.max(out[k].end, out[k + 1].t - 0.16);
+    // 下一行字幕 0.6 秒內就出現:這一行留到它出現前 0.16 秒(淡出 0.15 秒),不閃掉、也不延誤下一行
+    for (let k = 0; k + 1 < out.length; k++) if (out[k + 1].t - out[k].end < 0.6 && out[k + 1].t > out[k].t) out[k].end = out[k + 1].t - 0.16;
     return out;
   }
 

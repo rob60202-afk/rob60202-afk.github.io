@@ -22,11 +22,11 @@ function tone(freq, dur, { a = 0.004, r = 0.03, harm = 0.25 } = {}) { // 嗶:正
 }
 function motor(dur, { f = 118, rise = 0.7, g = 1 } = {}) { // 電動送風機:馬達聲 + 風聲,開機時轉速慢慢上來
   const n = Math.ceil(dur * SR), out = new Float32Array(n), a = new Sine(), b = new Sine(0.3), c = new Sine(0.6);
-  let seed = 7, lp = 0;
+  let seed = 7, lp1 = 0, lp2 = 0;
   for (let i = 0; i < n; i++) {
     const tt = i / SR, k = Math.min(1, tt / rise), ff = f * (0.35 + 0.65 * k * k);
-    seed = (seed * 16807) % 2147483647; const w = (seed / 2147483647) * 2 - 1; lp += (w - lp) * 0.06;
-    out[i] = g * k * (a.next(ff) * 0.35 + b.next(2 * ff) * 0.22 + c.next(3.01 * ff) * 0.1 + lp * 1.6) * env(i, n, 0.05, 0.3);
+    seed = (seed * 16807) % 2147483647; const w = (seed / 2147483647) * 2 - 1; lp1 += (w - lp1) * 0.08; lp2 += (lp1 - lp2) * 0.08; // 風聲:兩次低通,不要嘶嘶的高頻
+    out[i] = g * k * (a.next(ff) * 0.35 + b.next(2 * ff) * 0.22 + c.next(3.01 * ff) * 0.1 + lp2 * 3.2) * env(i, n, 0.05, 0.3);
   }
   return out;
 }
@@ -72,7 +72,7 @@ fx.addMono(I.noiseSweep(0.35, 2200, 1800, { q: 2, pink: false }), ev.report, 0.0
 fx.addMono(I.noiseSweep(0.9, 300, 260, { q: 0.7, pink: true }), ev.blower - 0.25, 0.1);          // 輪子推過來
 fx.addMono(I.paperFwip(0.5), ev.duct, 0.2); fx.addMono(I.paperFwip(0.4), ev.duct + 0.3, 0.16);  // 風管滑進人孔
 fx.addMono(I.tvClick(), ev.fan - 0.05, 0.4);                                                    // 開關
-amb.addMono(motor(DURATION - ev.fan, { f: 118, rise: 0.7 }), ev.fan, 0.045);                     // 送風機一直轉到最後
+amb.addMono(motor(DURATION - ev.fan, { f: 118, rise: 0.7 }), ev.fan, 0.04);                     // 送風機一直轉到最後
 fx.addMono(I.pop(1.1), ev.card7, 0.26);
 chime(['C5', 'E5'], ev.card7 + 0.15, 0.1, 0.18);
 // ---------- 8 戴面罩、扣救生索、下去 ----------

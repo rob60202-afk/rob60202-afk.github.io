@@ -121,6 +121,20 @@
     }
   }
 
+  // 師傅的視線:紅色虛線 + 箭頭(跟 L003-u1 開場同一個畫法),from → to
+  function gaze(ctx, from, to, t, a = 1, lw = 7) {
+    if (a <= 0) return;
+    const dx = to[0] - from[0], dy = to[1] - from[1], L = Math.hypot(dx, dy);
+    if (L < 4) return;
+    const ux = dx / L, uy = dy / L, nx = -uy, ny = ux, col = 'rgba(200,69,47,0.85)';
+    ctx.save(); ctx.globalAlpha *= a;
+    ctx.save(); ctx.setLineDash([22, 16]); ctx.lineDashOffset = -t * 80; stroke(ctx, [from, to], col, lw); ctx.restore();
+    for (let d = 110; d < L - 30; d += 210) { const px = from[0] + ux * d, py = from[1] + uy * d; stroke(ctx, [[px - ux * 18 + nx * 18, py - uy * 18 + ny * 18], [px, py], [px - ux * 18 - nx * 18, py - uy * 18 - ny * 18]], col, lw); }
+    ctx.restore();
+  }
+  // 從安全帽上方往上看的視線(o = 角色;grow 0..1;top = 視線要到的 y)
+  const gazeUpFrom = (ctx, o, t, grow, top, a = 1) => { if (grow <= 0) return; const hp = KIT.headPos(o), s = o.s || 1, y0 = hp[1] - 150 * s; gaze(ctx, [hp[0] + 4 * s, y0], [hp[0] + 4 * s, lerp(y0, top, grow)], t, a, 7 / Math.max(0.5, s < 1 ? 1 : 1)); };
+
   // ---------- 梯子、施工架(示意圖用)----------
   // 從 base(地面那一端的中心)到 top(靠牆那一端的中心)的一把梯子;w = 寬
   function ladder(ctx, base, top, w, { color = '#B98A5E', seed = 1600, rungs = 7, lw = 9 } = {}) {
@@ -183,7 +197,8 @@
     const c = walkCam(t);
     ctx.save(); camOn(ctx, c);
     KIT.bg.fab(ctx, t, TALL); fabTallExtras(ctx);
-    people(ctx, t, { crown: {} });
+    const P = people(ctx, t, { crown: {} });
+    gazeUpFrom(ctx, P.mo, t, ease.outCubic(seg(t, ev.lookUp + 0.1, ev.lookUp + 0.8)), -700);
     ctx.restore();
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.10)', floor: 0.2 });
   }
@@ -193,7 +208,9 @@
   function askShot(ctx, t) {
     fabStill(ctx, -150, 0.85, 0.42);
     const m = mouth('master', t);
-    KIT.person(ctx, { x: 1000, y: 1500, s: 2.0, pose: 'stand', style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: m || 'flat', brows: 'up', look: 0.15, lookY: -1, headY: -6, blink: 0, shadow: false });
+    const o = { x: 1000, y: 1500, s: 2.0, pose: 'stand', style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: m || 'flat', brows: 'up', look: 0.15, lookY: -1, headY: -6, blink: 0, shadow: false };
+    KIT.person(ctx, o);
+    const hp = KIT.headPos(o); gaze(ctx, [hp[0] + 8, hp[1] - 270], [hp[0] + 8, -60], t, 1, 9);
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.08)' });
   }
 
@@ -210,6 +227,7 @@
       if (pu > 0) { so.gesture = 'pointUp'; so.handR = [lerp(70, 118, pu), lerp(-212, -497, pu)]; }
       mo = { ...MST2, pose: 'stand', style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: ms || 'flat', brows: 'up', look: 0.05, lookY: -1, headY: -4, blink: 0, shadow: false };
       KIT.person(ctx, mo); KIT.person(ctx, so); crownOn(ctx, so, t, {});
+      gazeUpFrom(ctx, mo, t, 1, -80);
       if (t >= ev.hug) { // 指尖往上冒的箭頭
         const f = KIT.world(so, so.handR[0] + 6, so.handR[1] - 40);
         for (let k = 0; k < 3; k++) {
@@ -219,11 +237,15 @@
       }
     } else { // 5. 師傅終於轉頭看阿樹,面無表情
       const tu = ease.inOutCubic(seg(t, ev.turn, ev.turn + 0.35)), sw = seg(t, ev.sweat, ev.sweat + 0.4), after = t >= E[5] + 0.1;
-      mo = { ...MST2, pose: 'stand', style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: ms || 'flat', brows: 'neutral', look: lerp(0.05, -0.9, tu), lookY: lerp(-1, 0.15, tu), headY: lerp(-4, 0, tu), headX: lerp(0, -5, tu),
+      mo = { ...MST2, pose: 'stand', style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: ms || 'flat', brows: 'neutral', look: lerp(0.05, -1.0, tu), lookY: lerp(-1, 0.15, tu), headY: lerp(-4, 0, tu), headX: lerp(0, -10, tu),
         blink: tu >= 1 ? blink(t, 0.6) : 0, shadow: false };
       so = { ...SHU2, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: sw > 0 ? 'wide' : 'normal', mouth: after ? 'wavy' : sw > 0 ? 'o' : tu > 0.5 ? 'smile' : 'grin', brows: sw > 0 ? 'worried' : 'up',
         look: lerp(0.25, 0.75, tu), lookY: lerp(-1, 0, tu), blink: sw > 0 ? 0 : blink(t, 0.2), blush: 0.55 + 0.3 * sw, sweat: sw, shadow: false };
       KIT.person(ctx, mo); KIT.person(ctx, so); crownOn(ctx, so, t, { tilt: 1 });
+      // 視線:一直盯著天花板 → 轉頭那一刻掃到阿樹臉上,停一下就消失
+      const mh = KIT.headPos(mo), sh = KIT.headPos(so), ga = 1 - seg(t, ev.turn + 0.75, ev.turn + 1.1);
+      if (tu <= 0) gazeUpFrom(ctx, mo, t, 1, -80);
+      else if (ga > 0) { const an = lerp(-Math.PI / 2, Math.atan2(sh[1] - mh[1], sh[0] + 120 - mh[0]), tu), L = lerp(560, Math.hypot(sh[0] + 120 - mh[0], sh[1] - mh[1]) - 40, tu), f = [mh[0] - 60 * tu, mh[1] - lerp(150 * MST2.s, 0, tu)]; gaze(ctx, f, [f[0] + Math.cos(an) * L, f[1] + Math.sin(an) * L], t, ga); }
     }
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.08)' });
     return { so, mo };
@@ -261,7 +283,8 @@
     }
     // 三個人都抬頭看(師傅問「多高?」)
     const P = people(ctx, t, { look: 'up', walk: false, crown: { tilt: ease.outCubic(seg(t, ev.crownTilt, ev.crownTilt + 0.6)) } });
-    const cpos = KIT.headPos(P.so);
+    const cpos = KIT.headPos(P.so), mh = KIT.headPos(P.mo);
+    gazeUpFrom(ctx, P.mo, t, lerp(0.35, 1, ease.inOutCubic(seg(t, ev.tilt[0], ev.tilt[1] + 0.1))), PIPE_Y + 70, 1 - seg(t, ev.ruler[0] - 0.2, ev.ruler[0] + 0.2));
     ctx.restore();
     // 「6 m」:畫在畫面座標(字不跟著鏡頭縮小)
     if (t >= ev.six) {
@@ -314,15 +337,15 @@
     const hp = KIT.world(o, o.handR[0], o.handR[1]);
     // 大拇指和食指之間夾著一把很小的梯子
     const a = popIn(t, ev.tiny, 0.3);
-    if (hu > 0.5) {
-      G.limb(ctx, [[hp[0] - 4, hp[1] - 6], [hp[0] + 10, hp[1] - 96]], { color: C.skin, lw: 15, outline: 3, seed: 1800 });  // 食指
-      G.limb(ctx, [[hp[0] + 6, hp[1] - 2], [hp[0] + 34, hp[1] - 14]], { color: C.skin, lw: 15, outline: 3, seed: 1801 }); // 大拇指
+    if (hu > 0.5) { // 食指在上、大拇指在下,捏著一把很小的梯子
+      G.limb(ctx, [[hp[0] - 2, hp[1] - 20], [hp[0] + 34, hp[1] - 74], [hp[0] + 78, hp[1] - 90]], { color: C.skin, lw: 16, outline: 3, seed: 1800 });
+      G.limb(ctx, [[hp[0] + 6, hp[1] - 2], [hp[0] + 80, hp[1] - 12]], { color: C.skin, lw: 16, outline: 3, seed: 1801 });
     }
     if (a > 0) {
-      ctx.save(); ctx.translate(hp[0] + 32, hp[1] - 58); ctx.scale(a, a);
-      ladder(ctx, [0, 40], [0, -38], 22, { rungs: 4, lw: 5, seed: 1802 });
+      ctx.save(); ctx.translate(hp[0] + 62, hp[1] - 50); ctx.scale(a, a);
+      ladder(ctx, [0, 28], [0, -28], 20, { rungs: 3, lw: 5, seed: 1802 });
       ctx.restore();
-      ctx.save(); ctx.globalAlpha *= 0.7 * a; ctx.setLineDash([8, 8]); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(hp[0] + 30, hp[1] - 58, 70, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.globalAlpha *= 0.7 * a; ctx.setLineDash([8, 8]); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(hp[0] + 56, hp[1] - 50, 78, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     }
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.08)' });
   }
@@ -344,8 +367,9 @@
     stroke(ctx, [[dx, fy - 4], [dx, py + 4]], C.red, 6);
     stroke(ctx, [[dx - 18, py + 30], [dx, py + 4], [dx + 18, py + 30]], C.red, 6);
     stroke(ctx, [[dx - 18, fy - 30], [dx, fy - 4], [dx + 18, fy - 30]], C.red, 6);
-    stroke(ctx, [[dx - 26, py], [wx, py]], C.red, 3); stroke(ctx, [[dx - 26, fy], [dx + 26, fy]], C.red, 3);
-    ctx.save(); ctx.translate(dx - 22, (fy + py) / 2 + 22); ctx.scale(dp, dp); label(ctx, '6 m', 0, 0, L.dimSize || 64, C.red, { stroke: '#FFFFFF', strokeW: 14, align: 'right', fam: NUMF }); ctx.restore();
+    stroke(ctx, [[dx - 26, py], [dx + 26, py]], C.red, 3); stroke(ctx, [[dx - 26, fy], [dx + 26, fy]], C.red, 3);
+    const DL = L.dimLabel || { x: dx - 22, y: (fy + py) / 2 + 22, align: 'right' };
+    ctx.save(); ctx.translate(DL.x, DL.y); ctx.scale(dp, dp); label(ctx, '6 m', 0, 0, L.dimSize || 64, C.red, { stroke: '#FFFFFF', strokeW: 14, align: DL.align, fam: NUMF }); ctx.restore();
     // 一半的高度(虛線)
     if (L.half != null && t >= L.half) {
       const a = clamp((t - L.half) / 0.3), yh = fy - 270;
@@ -395,10 +419,19 @@
       ctx.save(); ctx.translate(1420, 140); ctx.scale(a, a); ctx.translate(-1420, -140);
       KIT.card(ctx, 1000, 140, 840, 730, { seed: 1990, tape: true });
       label(ctx, '示意', 1060, 212, 40, C.muted, { align: 'left' });
-      figure(ctx, t, { fy: 822, wx: 1110, x1: 1800, dimX: 1700, dimSize: 60, ladder: ev.ladder8, half: ev.half8, cross: ev.xmark });
+      figure(ctx, t, { fy: 822, wx: 1110, x1: 1800, dimX: 1700, dimSize: 60, dimLabel: { x: 1720, y: 420, align: 'left' }, ladder: ev.ladder8, half: ev.half8, cross: ev.xmark });
       ctx.restore();
     }
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.08)' });
+  }
+  // 一行算式,各段在自己的時間彈出;整行置中(先量好每一段的寬度,不會疊在一起)
+  function seqLine(ctx, t, parts, cx, y, size, color = C.ink, gap = 0.32) {
+    const ws = parts.map(([str]) => KIT.measure(ctx, str, size, NUMF)), g = size * gap, tot = ws.reduce((a, b) => a + b, 0) + g * (parts.length - 1);
+    let x = cx - tot / 2;
+    parts.forEach(([str, at, col], k) => {
+      if (t >= at) { const p = popIn(t, at, 0.25); ctx.save(); ctx.translate(x + ws[k] / 2, y - size * 0.35); ctx.scale(p, p); num(ctx, str, 0, size * 0.35, size, col || color, 'center'); ctx.restore(); }
+      x += ws[k] + g;
+    });
   }
   // 9. 【圖 A】高度示意 + 旁邊跳出「10 天 × 2,500 = 25,000」
   function figAShot(ctx, t) {
@@ -416,8 +449,7 @@
       label(ctx, '高空作業車租金', 1610, 372, 40, C.muted);
       stroke(ctx, [[1430, 398], [1790, 398]], '#D8CDB4', 3);
       const show = (str, x, y, at, size, col, align) => { if (t >= at) { const p = popIn(t, at, 0.25); ctx.save(); ctx.translate(x, y); ctx.scale(p, p); num(ctx, str, 0, 0, size, col, align); ctx.restore(); } };
-      show('10 天', 1440, 476, c0, 56, C.ink, 'left');
-      show('× 2,500', 1780, 476, c1, 56, C.ink, 'right');
+      seqLine(ctx, t, [['10 天', c0], ['×', c1], ['2,500', c1]], 1610, 476, 54);
       if (t >= c2) stroke(ctx, [[1440, 512], [1780, 512]], C.ink, 4);
       show('= 25,000', 1780, 590, c2, 70, C.red, 'right');
       ctx.restore();
@@ -437,8 +469,8 @@
     fill(ctx, x + 26, zero, w - 52, bot - zero, 'rgba(200,69,47,0.10)');
     stroke(ctx, [[axisX, bot], [axisX, top + 8]], C.ink, 5);
     stroke(ctx, [[axisX - 14, top + 28], [axisX, top + 8], [axisX + 14, top + 28]], C.ink, 5);
-    stroke(ctx, [[x + 26, zero], [x + w - 26, zero]], C.ink, 5);
-    label(ctx, '0', axisX - 22, zero + 16, 46, C.ink, { align: 'right', fam: NUMF });
+    stroke(ctx, [[axisX - 8, zero], [x + w - 26, zero]], C.ink, 5);
+    label(ctx, '0', axisX - 20, zero + 16, 46, C.ink, { align: 'right', fam: NUMF });
     const val = g.value(t);
     const py = zero - val.v / 1000 * k, px = axisX + 40 + pillW / 2;
     G.ellipse(ctx, axisX, py, 11, 11, { fill: val.color, lw: 3, seed: 2101 });
@@ -448,7 +480,7 @@
     ctx.save(); ctx.strokeStyle = val.color; ctx.lineWidth = 6; ctx.beginPath(); ctx.roundRect(-pillW / 2 + 8, -pillH / 2 + 8, pillW - 16, pillH - 16, pillH / 2 - 8); ctx.stroke(); ctx.restore();
     num(ctx, val.text, 0, size * 0.36, size, val.color, 'center');
     ctx.restore();
-    if (val.flash > 0) { ctx.save(); ctx.globalAlpha *= val.flash; stroke(ctx, [[x + 26, zero], [x + w - 26, zero]], '#FFE27A', 16); ctx.restore(); }
+    if (val.flash > 0) { ctx.save(); ctx.globalAlpha *= val.flash; stroke(ctx, [[axisX - 8, zero], [x + w - 26, zero]], '#FFE27A', 16); ctx.restore(); }
     return { px, py, pillW, pillH };
   }
   const GREEN = '#2E8B57';
@@ -500,11 +532,13 @@
   // ===================================== 11. 板車載高空車進廠 =====================================
   function exterior(ctx) {
     KIT.cached(ctx, 'u2ext', (x) => {
-      fill(x, -100, -100, W + 200, 900, lin(x, 0, 0, 0, 860, [[0, '#A9D4EE'], [1, '#E6F3FA']]));
+      fill(x, -100, -100, W + 200, 960, lin(x, 0, 0, 0, 860, [[0, '#A9D4EE'], [1, '#E6F3FA']]));
       for (const [cx, cy, r] of [[300, 210, 60], [380, 200, 80], [470, 215, 55]]) G.ellipse(x, cx, cy, r * 1.4, r * 0.6, { fill: '#FFFFFF', lw: 0, seed: 2200 + cx, alpha: 0.85 });
       // 遠處的樹與圍牆
       for (let k = 0; k < 9; k++) G.ellipse(x, 60 + k * 130, 660 - (k % 3) * 14, 90, 70, { fill: k % 2 ? '#7FB08A' : '#6FA27C', lw: 3, seed: 2210 + k });
       G.rrect(x, -40, 690, 1300, 90, 2, { fill: '#D9D2C4', lw: 4, seed: 2220 });
+      fill(x, -100, 778, W + 200, 70, '#C9CCC6');                                                     // 人行道
+      G.line(x, [[-40, 780], [W + 40, 780]], { color: '#8E99A3', lw: 4, seed: 2219 });
       for (let k = 0; k < 14; k++) G.line(x, [[-20 + k * 95, 690], [-20 + k * 95, 780]], { color: '#B8AE9A', lw: 3, seed: 2221 + k });
       // 廠房外牆(右)+ 大門
       G.rrect(x, 1180, 160, 800, 700, 4, { fill: '#DCE3E8', lw: 5, seed: 2240 });
@@ -536,39 +570,38 @@
     ctx.restore();
     return L;
   }
-  const GC = { x: 1440, y: 140, w: 400, h: 560, zero: 330, k: 11.5, axisX: 1500, size: 50, pillW: 260, pillH: 78, titleSize: 44, seed: 2400 };
+  const GC = { x: 1440, y: 140, w: 400, h: 560, zero: 330, k: 11.5, axisX: 1516, size: 50, pillW: 260, pillH: 78, titleSize: 44, seed: 2400 };
   function truckShot(ctx, t) {
     exterior(ctx);
-    const u = ease.outCubic(seg(t, ev.drive[0], ev.drive[1])), tx = lerp(-700, 770, u);
+    const u = ease.outCubic(seg(t, ev.drive[0], ev.drive[1])), tx = lerp(-600, 860, u);
     truck(ctx, tx, 842, t, u > 0 && u < 1);
     // 進場 → 、← 退場
     const chipLabel = (str, x, y, at, col, dir) => {
       if (t < at) return; const p = popIn(t, at, 0.3);
       ctx.save(); ctx.translate(x, y); ctx.scale(p, p);
-      const tw = KIT.measure(ctx, str, 44) + 120;
+      const lw = KIT.measure(ctx, str, 44), tw = lw + 130;
       G.rrect(ctx, -tw / 2, -44, tw, 84, 42, { fill: col, lw: 4, seed: 2330 + x });
-      label(ctx, str, dir * 22, 15, 44, '#FFFFFF');
-      const ax = dir > 0 ? tw / 2 - 52 : -tw / 2 + 52;
-      stroke(ctx, [[ax - dir * 22, -14], [ax + dir * 6, 0], [ax - dir * 22, 14]], '#FFFFFF', 7);
+      label(ctx, str, -dir * 26, 15, 44, '#FFFFFF');                       // 字在一邊,箭頭在另一邊
+      const ax = dir * (lw / 2 + 12);
+      stroke(ctx, [[ax - dir * 8, 0], [ax + dir * 30, 0]], '#FFFFFF', 7);
+      stroke(ctx, [[ax + dir * 14, -14], [ax + dir * 32, 0], [ax + dir * 14, 14]], '#FFFFFF', 7);
       ctx.restore();
     };
-    chipLabel('進場', 1110, 470, ev.tripIn, C.green, 1);
-    chipLabel('退場', 330, 470, ev.tripOut, '#7E7062', -1);
+    chipLabel('進場', 1230, 462, ev.tripIn, C.green, 1);
+    chipLabel('退場', 300, 600, ev.tripOut, '#7E7062', -1);
     // 算式卡:2 趟 × 4,500 = 9,000;比租一天還貴
     const a = popIn(t, ev.trips - 0.1, 0.35);
     if (a > 0) {
       ctx.save(); ctx.translate(420, 150); ctx.scale(a, a); ctx.translate(-420, -150);
-      KIT.card(ctx, 90, 150, 680, 260 + (t >= ev.dearer ? 0 : 0), { fill: C.cream, seed: 2340, tape: true });
-      label(ctx, '板車進場、退場', 430, 222, 40, C.muted);
-      stroke(ctx, [[120, 248], [740, 248]], '#D8CDB4', 3);
-      const show = (str, x, y, at, size, col, align) => { if (t >= at) { const p = popIn(t, at, 0.25); ctx.save(); ctx.translate(x, y); ctx.scale(p, p); num(ctx, str, 0, 0, size, col, align); ctx.restore(); } };
-      show('2 趟', 130, 330, ev.trips, 56, C.ink, 'left');
-      show('× 4,500', 410, 330, ev.price, 56, C.ink, 'left');
-      show('= 9,000', 740, 330, ev.nine, 60, C.red, 'right');
+      KIT.card(ctx, 90, 140, 680, 340, { fill: C.cream, seed: 2340, tape: true });
+      label(ctx, '板車進場、退場', 430, 212, 40, C.muted);
+      stroke(ctx, [[120, 238], [740, 238]], '#D8CDB4', 3);
+      seqLine(ctx, t, [['2 趟', ev.trips], ['×', ev.price], ['4,500', ev.price]], 430, 312, 54);
+      if (t >= ev.nine) { stroke(ctx, [[150, 340], [710, 340]], C.ink, 4); const p = popIn(t, ev.nine, 0.25); ctx.save(); ctx.translate(710, 402); ctx.scale(p, p); num(ctx, '= 9,000', 0, 0, 62, C.red, 'right'); ctx.restore(); }
       if (t >= ev.dearer) {
         const p = popIn(t, ev.dearer, 0.3);
-        ctx.save(); ctx.translate(430, 384); ctx.scale(p, p);
-        label(ctx, '一趟 4,500 ＞ 租一天 2,500', 0, 0, 38, C.red);
+        ctx.save(); ctx.translate(430, 456); ctx.scale(p, p);
+        label(ctx, '一趟 4,500 ＞ 租一天 2,500', 0, 0, 36, C.red);
         ctx.restore();
       }
       ctx.restore();
@@ -604,17 +637,17 @@
       G.rrect(ctx, x + 6, y + 6, cw - 12, ch - 12, 8, { fill: weekend ? '#E4DED2' : '#FFFDF4', lw: 3, seed: 2510 + r * 7 + c });
       if (weekend) continue;
       const k = day++, idle = IDLE.includes(k), at = ev.dayT[k], on = t >= at;
-      liftIcon(ctx, x + cw / 2, y + 190, 0.27, idle, 2520 + k * 7);
+      if (idle && on && t < at + 0.6) { ctx.save(); ctx.globalAlpha *= 0.14 * (1 - (t - at) / 0.6); fill(ctx, x + 6, y + 6, cw - 12, ch - 12, C.red); ctx.restore(); } // 沒在用的那天:閃一下紅
+      liftIcon(ctx, x + cw / 2, y + 166, 0.27, idle, 2520 + k * 7);
       if (idle) { // 沒在用:停著,上面幾個 z
-        ctx.save(); ctx.globalAlpha *= 0.8; label(ctx, 'z', x + cw / 2 + 40, y + 70, 34, C.muted); label(ctx, 'z', x + cw / 2 + 60, y + 44, 40, C.muted); ctx.restore();
-        label(ctx, '沒在用', x + cw / 2, y + 240, 34, C.muted);
+        label(ctx, 'z', x + cw / 2 + 40, y + 52, 34, '#5E5247'); label(ctx, 'z', x + cw / 2 + 60, y + 30, 40, '#5E5247');
+        label(ctx, '沒在用', x + cw / 2, y + 214, 34, '#5E5247');
       }
       if (on) { // 這一天照樣計費
         const p = popIn(t, at, 0.25);
-        ctx.save(); ctx.translate(x + cw / 2, y + 280); ctx.scale(p, p); num(ctx, '2,500', 0, 0, 36, C.red, 'center'); ctx.restore();
+        ctx.save(); ctx.translate(x + cw / 2, y + 270); ctx.scale(p, p); num(ctx, '2,500', 0, 0, 36, C.red, 'center'); ctx.restore();
         const cur = t < at + 0.45 ? 1 - (t - at) / 0.45 : 0;
         if (cur > 0) { ctx.save(); ctx.globalAlpha *= cur; ctx.strokeStyle = '#F0A800'; ctx.lineWidth = 8; ctx.beginPath(); ctx.roundRect(x + 2, y + 2, cw - 4, ch - 4, 12); ctx.stroke(); ctx.restore(); }
-        if (idle && t < at + 0.6) { ctx.save(); ctx.globalAlpha *= 0.25 * (1 - (t - at) / 0.6); fill(ctx, x + 6, y + 6, cw - 12, ch - 12, C.red); ctx.restore(); }
       }
     }
     // 計費表
@@ -627,9 +660,9 @@
     G.rrect(ctx, mx + 120, my + 290, 240, 70, 35, { fill: KIT.mix('#7A2A20', '#E8452F', lamp), lw: 4, seed: 2602 });
     label(ctx, '計費中', mx + 240, my + 338, 38, '#FFFFFF');
     ev.dayT.forEach((at) => { // 每一天跳一次「+2,500」
-      if (t < at || t > at + 0.9) return;
-      const u = (t - at) / 0.9;
-      ctx.save(); ctx.globalAlpha *= 1 - u * u; num(ctx, '+2,500', mx + 240, my + 440 - u * 60, 46, '#FFD75E', 'center', { stroke: '#3E4A5C', strokeW: 8 }); ctx.restore();
+      if (t < at || t > at + 0.42) return;
+      const u = (t - at) / 0.42;
+      ctx.save(); ctx.globalAlpha *= 1 - u * u * u; num(ctx, '+2,500', mx + 240, my + 438 - u * 40, 46, '#FFD75E', 'center', { stroke: '#3E4A5C', strokeW: 8 }); ctx.restore();
     });
     KIT.warm(ctx, { color: 'rgba(255,214,140,0.12)', floor: 0.18 });
   }
@@ -682,14 +715,14 @@
     fill(ctx, x, hz, w, y + h - hz, lin(ctx, 0, hz, 0, y + h, [[0, '#C9CDD1'], [1, '#A9AFB5']]));
     G.line(ctx, [[x, hz], [x + w, hz]], { color: '#8E99A3', lw: 4, seed: 2699 });
     // 往遠處縮小的廠區道路
-    G.poly(ctx, [[x + 150, y + h], [x + 470, y + h], [x + 470, hz], [x + 420, hz]], { fill: '#9AA1A8', lw: 3, seed: 2698 });
+    G.poly(ctx, [[x + 120, y + h], [x + 430, y + h], [x + 322, hz], [x + 278, hz]], { fill: '#9AA1A8', lw: 3, seed: 2698 });
     // 遠方的廠房(施工點)+ 紅色圖釘
-    G.rrect(ctx, x + 380, y + 214, 150, 76, 4, { fill: '#DCE3E8', lw: 4, seed: 2700 });
-    G.poly(ctx, [[x + 370, y + 216], [x + 455, y + 180], [x + 540, y + 216]], { fill: '#AEB9C3', lw: 4, seed: 2701 });
+    G.rrect(ctx, x + 240, y + 220, 120, 70, 4, { fill: '#DCE3E8', lw: 4, seed: 2700 });
+    G.poly(ctx, [[x + 230, y + 222], [x + 300, y + 188], [x + 370, y + 222]], { fill: '#AEB9C3', lw: 4, seed: 2701 });
     const bob = Math.sin(t * 4) * 4;
-    stroke(ctx, [[x + 455, y + 168 + bob], [x + 455, y + 140 + bob]], C.red, 6);
-    G.ellipse(ctx, x + 455, y + 128 + bob, 18, 18, { fill: C.red, lw: 4, seed: 2740 });
-    label(ctx, '施工點', x + 455, y + 92, 38, C.red);
+    stroke(ctx, [[x + 300, y + 178 + bob], [x + 300, y + 150 + bob]], C.red, 6);
+    G.ellipse(ctx, x + 300, y + 138 + bob, 18, 18, { fill: C.red, lw: 4, seed: 2740 });
+    label(ctx, '施工點', x + 300, y + 100, 38, C.red);
     // 大門口(左邊前景):門柱、拉門、門牌
     G.rrect(ctx, x + 24, y + 330, 44, 270, 4, { fill: '#8E99A3', lw: 4, seed: 2702 });
     for (let k = 0; k < 6; k++) G.line(ctx, [[x + 84 + k * 26, y + 380], [x + 84 + k * 26, y + 590]], { color: '#6C7680', lw: 5, seed: 2710 + k });
@@ -697,14 +730,14 @@
     G.rrect(ctx, x + 14, y + 300, 170, 56, 6, { fill: '#FFFDF4', lw: 4, seed: 2725 });
     label(ctx, '大門口', x + 99, y + 342, 38, C.ink);
     // 卸貨區(門內):一疊管子放在棧板上
-    ctx.save(); ctx.setLineDash([14, 10]); ctx.strokeStyle = '#E0A800'; ctx.lineWidth = 6; ctx.strokeRect(x + 250, y + 470, 280, 120); ctx.restore();
-    G.rrect(ctx, x + 290, y + 548, 200, 22, 3, { fill: '#B98A5E', lw: 3.5, seed: 2730 });
-    for (let r = 0; r < 3; r++) for (let k = 0; k < 6 - r; k++) G.ellipse(ctx, x + 314 + k * 30 + r * 15, y + 533 - r * 26, 14, 14, { fill: '#D9DEE3', lw: 3, seed: 2731 + r * 7 + k });
-    label(ctx, '卸貨區', x + 390, y + 456, 36, '#8A6200');
+    ctx.save(); ctx.setLineDash([14, 10]); ctx.strokeStyle = '#E0A800'; ctx.lineWidth = 6; ctx.strokeRect(x + 250, y + 482, 280, 110); ctx.restore();
+    G.rrect(ctx, x + 290, y + 556, 200, 22, 3, { fill: '#B98A5E', lw: 3.5, seed: 2730 });
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 6 - r; k++) G.ellipse(ctx, x + 314 + k * 30 + r * 15, y + 541 - r * 24, 13, 13, { fill: '#D9DEE3', lw: 3, seed: 2731 + r * 7 + k });
+    label(ctx, '卸貨區', x + 465, y + 468, 36, '#8A6200', { stroke: '#FFFFFF', strokeW: 8 });
     // 從卸貨區走到施工點:很長一段路
-    const pts = [[x + 380, y + 440], [x + 430, y + 400], [x + 440, y + 340], [x + 452, y + 296], [x + 455, y + 200]];
+    const pts = [[x + 300, y + 478], [x + 316, y + 420], [x + 292, y + 350], [x + 302, y + 300], [x + 300, y + 196]];
     ctx.save(); ctx.setLineDash([16, 14]); ctx.lineDashOffset = -t * 40; stroke(ctx, pts, C.red, 7); ctx.restore();
-    label(ctx, '很遠', x + 300, y + 392, 46, C.ink, { stroke: '#FFFFFF', strokeW: 10 });
+    label(ctx, '很遠', x + 450, y + 392, 46, C.ink, { stroke: '#FFFFFF', strokeW: 10 });
   }
   function panel2(ctx, t, P) { // 師傅指著天花板上既有的主管與一顆關斷閥;新管要接上去,得先停氣
     const { x, y, w, h } = P;
@@ -719,17 +752,17 @@
     const glow = 0.55 + 0.45 * Math.sin(t * 6);
     ctx.save(); ctx.globalAlpha *= glow; ctx.strokeStyle = '#F0A800'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(vx, vy - 30, 92, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     // 新管(藍色虛線)從右邊接上主管
-    ctx.save(); ctx.setLineDash([24, 14]); ctx.lineDashOffset = -t * 40; stroke(ctx, [[x + w + 10, y + 300], [x + 420, y + 300], [x + 420, y + 168]], C.pipe, 14); ctx.restore();
+    ctx.save(); ctx.setLineDash([24, 14]); ctx.lineDashOffset = -t * 40; stroke(ctx, [[x + w + 10, y + 390], [x + 445, y + 390], [x + 445, y + 168]], C.pipe, 14); ctx.restore();
     label(ctx, '既有主管', x + 120, y + 215, 36, C.ink);
     label(ctx, '關斷閥', vx - 10, vy + 92, 36, C.ink);
     // 「停氣」牌
     if (t >= ev.stopGas) {
       const a = popIn(t, ev.stopGas, 0.3), sw = Math.sin((t - ev.stopGas) * 5) * 0.2 * Math.exp(-(t - ev.stopGas) * 2);
-      ctx.save(); ctx.translate(vx + 30, vy + 20); ctx.rotate(sw); ctx.scale(a, a);
-      stroke(ctx, [[0, 0], [60, 120]], C.ink, 3);
-      G.rrect(ctx, 10, 120, 110, 66, 8, { fill: '#FFFFFF', lw: 4, seed: 2810 });
-      G.rrect(ctx, 16, 126, 98, 54, 6, { fill: C.red, lw: 0, seed: 2811 });
-      label(ctx, '停氣', 65, 166, 38, '#FFFFFF');
+      ctx.save(); ctx.translate(vx + 66, vy + 24); ctx.rotate(sw); ctx.scale(a, a);
+      stroke(ctx, [[0, 0], [0, 104]], C.ink, 3);
+      G.rrect(ctx, -55, 104, 110, 66, 8, { fill: '#FFFFFF', lw: 4, seed: 2810 });
+      G.rrect(ctx, -49, 110, 98, 54, 6, { fill: C.red, lw: 0, seed: 2811 });
+      label(ctx, '停氣', 0, 150, 38, '#FFFFFF');
       ctx.restore();
     }
     // 陳師傅(白帽)指著關斷閥
@@ -782,7 +815,7 @@
       ctx.save(); ctx.translate(P.x + P.w / 2, P.y + P.h / 2); ctx.scale(a, a); ctx.rotate([-0.012, 0.008, -0.006][k]); ctx.translate(-(P.x + P.w / 2), -(P.y + P.h / 2));
       G.rrect(ctx, P.x - 10, P.y - 10, P.w + 20, P.h + 20, 6, { fill: '#FFFDF4', lw: 5, seed: 3000 + k });
       const f = clamp((t - ps[k]) / 0.35);
-      if (f < 1) { fill(ctx, P.x, P.y, P.w, P.h, '#EFE6D2'); label(ctx, '？', P.x + P.w / 2, P.y + P.h / 2 + 40, 120, '#CDBF9F'); }
+      if (f < 1) { fill(ctx, P.x, P.y, P.w, P.h, '#EFE6D2'); label(ctx, '？', P.x + P.w / 2, P.y + P.h / 2 + 40, 120, '#76664C'); }
       if (f > 0) { ctx.save(); ctx.globalAlpha *= f; ctx.beginPath(); ctx.rect(P.x, P.y, P.w, P.h); ctx.clip(); draws[k](ctx, t, P); ctx.restore(); }
       stroke(ctx, [[P.x, P.y], [P.x + P.w, P.y], [P.x + P.w, P.y + P.h], [P.x, P.y + P.h], [P.x, P.y]], C.ink, 5);
       ctx.restore();

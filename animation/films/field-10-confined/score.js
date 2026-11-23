@@ -14,7 +14,7 @@
   const r3 = (x) => +x.toFixed(3);
   const LEAD = 0.5, GAP = 0.3;
   // 多停的地方:等、照到、被拉回來之後、師傅說完、看不見的東西、送風字卡、救援人員下去、手還在抖
-  const EXTRA = { 0: 0.2, 1: 0.2, 3: 0.3, 4: 0.6, 5: 0.3, 6: 0.9, 7: 0.6, 8: 0.4 };
+  const EXTRA = { 0: 0.1, 1: 0.1, 3: 0.3, 4: 0.4, 5: 0.3, 6: 0.8, 7: 1.1, 8: 0.4 };
   const A = [], E = [];
   let t = LEAD;
   for (let i = 0; i < LINES.length; i++) { A.push(r3(t)); E.push(r3(t + DUR[i])); t += DUR[i] + GAP + (EXTRA[i] || 0); }

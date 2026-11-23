@@ -111,9 +111,9 @@
     ctx.beginPath(); ctx.arc(0, 0, w1 * 1.15, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     if (victim) { // 倒下的同事:光圈裡一團模糊的暗影,不畫任何細節
-      ctx.save(); ctx.globalAlpha *= a * 0.7;
+      ctx.save(); ctx.globalAlpha *= a * 0.82;
       ctx.beginPath(); ctx.ellipse(Q[0], Q[1], w1 * 1.1, w1 * 0.34, 0, 0, Math.PI * 2); ctx.clip();
-      ctx.filter = 'blur(10px)'; ctx.fillStyle = 'rgba(30,34,42,0.95)';
+      ctx.filter = 'blur(8px)'; ctx.fillStyle = 'rgba(26,30,38,0.95)';
       ctx.beginPath(); ctx.ellipse(Q[0] - 20, Q[1] + 2, 80, 17, -0.04, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(Q[0] + 66, Q[1] - 5, 26, 19, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
@@ -272,9 +272,9 @@
   function intakeAir(ctx, t, x, a) { // 外面的新鮮空氣被吸進進風口
     if (a <= 0) return;
     for (let k = 0; k < 6; k++) {
-      const p = ((t * 0.8) + k / 6) % 1, y0 = FL - 88 + (k % 3 - 1) * 34, xs = lerp(DOOR[0] + 120, x + 100, p);
-      const pts = []; for (let j = 0; j <= 6; j++) { const xx = xs + j * 14; pts.push([xx, y0 + Math.sin((xx + t * 120) * 0.05) * 6 * (1 - p)]); }
-      ctx.save(); ctx.globalAlpha *= a * Math.sin(Math.PI * p) * 0.9; stroke(ctx, pts, AIR, 6); ctx.restore();
+      const p = ((t * 0.8) + k / 6) % 1, y0 = FL - 88 + (k % 3 - 1) * 30 * (1 - 0.6 * p), xs = lerp(DOOR[0] + 200, x + 96, p);
+      const pts = []; for (let j = 0; j <= 6; j++) { const xx = xs + j * 13; pts.push([xx, y0 + Math.sin((xx + t * 120) * 0.05) * 6 * (1 - p)]); }
+      ctx.save(); ctx.globalAlpha *= a * Math.sin(Math.PI * p); stroke(ctx, pts, '#FFFFFF', 10); stroke(ctx, pts, '#7FC4EA', 6); ctx.restore();
     }
   }
   // 救援三腳架 + 捲揚器 + 救生索
@@ -299,10 +299,9 @@
     return { knob: [kx, ky], pulley: [hx - 14, hy + 42] };
   }
   function snap(ctx, x, y, rot, s) { KIT.snapHook(ctx, x, y, rot, s); }
-  function cones(ctx, t) { // 警示線:錐 + 警示帶,圍出救援區
-    KIT.cone(ctx, 258, BWY + 26, 0.7, 1450); KIT.cone(ctx, 246, FL + 2, 0.85, 1452);
-    KIT.warnTape(ctx, [[258, BWY - 40], [246, FL - 70]], { lw: 12 });
-    KIT.warnTape(ctx, [[258, BWY - 40], [120, BWY - 40]], { lw: 10 });
+  function cones(ctx, t) { // 警示線:兩個交通錐 + 警示帶,圍出救援區(阿樹、師傅在線外)
+    KIT.cone(ctx, 200, FL + 2, 0.8, 1450); KIT.cone(ctx, 284, FL + 2, 0.8, 1452);
+    KIT.warnTape(ctx, [[196, FL - 82], [288, FL - 82]], { lw: 12 });
   }
   function section(ctx, t, o = {}) { // 樓板以下的剖面:豎井、地下槽、梯子
     fill(ctx, TANKX0, TT, TANKX1 - TANKX0, TB - TT, lin(ctx, 0, TT, 0, TB, [[0, '#4A5763'], [1, '#2B333B']]));
@@ -450,7 +449,7 @@
       G.rrect(ctx, -8, -78, 16, 12, 3, { fill: INK, lw: 0, seed: 523 });
       ctx.restore();
     }
-    if (calling) KIT.bubble(ctx, t, { text: '喂?', x: 560, y: 560, tail: [470, 640], t0: ev.call, size: 58, maxW: 300 });
+    if (calling) KIT.bubble(ctx, t, { text: '喂?', x: 600, y: 536, tail: [470, 648], t0: ev.call, size: 58, maxW: 300 });
     finish(ctx, 'rgba(255,255,255,0.08)');
   }
   // 2 阿樹拿手電筒往下一照,人倒在底下(只看到光圈裡模糊的一團)
@@ -507,9 +506,9 @@
     } else if (pu >= 0.25 && bk < 1) { o.handR = [110, -300 + Math.sin(tt * 9) * 10]; o.handL = [-118, -250]; }
     // 師傅:從左邊進來,抓住阿樹左肩的安全帶往後拉
     const mIn = ease.outCubic(clamp((t - ev.reach) / (ev.grab - ev.reach)));
-    const grabPt = world(o, -66, -316);
-    const mx = lerp(lerp(-160, x - 200, mIn), x - 196, pu);
-    const mo = { x: mx, y: FL, s: SS, rot: -0.1 * Math.sin(Math.PI * pu), pose: (mIn > 0 && mIn < 1) || (pu > 0.05 && pu < 0.95) || (bk > 0.02 && bk < 0.98) ? 'walk' : 'stand', walk: (mIn * 1.5 + pu * 1.6 + bk * 1.4) % 1,
+    const grabPt = world(o, -62, -318);
+    const mx = lerp(-160, x - 118, mIn);
+    const mo = { x: mx, y: BWY + 26, s: 0.8, rot: -0.1 * Math.sin(Math.PI * pu), pose: (mIn > 0 && mIn < 1) || (pu > 0.05 && pu < 0.95) || (bk > 0.02 && bk < 0.98) ? 'walk' : 'stand', walk: (mIn * 1.5 + pu * 1.6 + bk * 1.4) % 1,
       style: CAST.master, seed: 440, eyes: grabbed ? 'normal' : 'wide', brows: 'determined', mouth: 'flat', look: 0.8, lookY: 0.2, blink: 0, blush: 0.3 };
     if (mIn > 0) mo.handR = toLocal(mo, lerp(world(mo, 110, -200)[0], grabPt[0], mIn), lerp(world(mo, 110, -200)[1], grabPt[1], mIn));
     return { o, mo, grabPt, grabbed, frozen, mIn, pu, bk, go, stp };
@@ -632,7 +631,7 @@
     const c = { x: 720, y: 880, z: 1.18 };
     cam(ctx, c, () => site(ctx, t, { light: 0.9, blower: b, people: () => person(ctx, co) }));
     if (t >= ev.fan + 0.8) { // 乾淨空氣的小標
-      const a = popIn(t, ev.fan + 0.8, 0.3), [lx, ly] = scr(c, BLOWER_X + 20, 610);
+      const a = popIn(t, ev.fan + 0.8, 0.3), [lx, ly] = scr(c, BLOWER_X + 66, 604);
       ctx.save(); ctx.translate(lx, ly); ctx.scale(a, a); ctx.rotate(0.03);
       G.tornPaper(ctx, -112, -42, 224, 84, { fill: '#EAF7FD', seed: 640 });
       G.decor(() => label(ctx, '乾淨空氣', 0, 16, 46, '#1F5E86'));
@@ -650,7 +649,7 @@
     finish(ctx);
   }
   // 8a 救援人員戴上全罩面罩(空氣呼吸器);旁邊是顧捲揚器的人
-  const RX = 470, AX = 330;
+  const RX = 470, AX = 352;
   function rescuerFront(t) {
     const u = clamp((t - ev.mask) / 0.8), strap = clamp((t - ev.mask - 0.85) / 0.5) * (1 - clamp((t - ev.mask - 1.7) / 0.5));
     const o = { x: RX, y: FL, s: SS, pose: 'stand', style: CAST.rescuer, seed: 500, harness: {}, eyes: 'normal', brows: 'determined', mouth: 'flat', look: -0.15, lookY: 0.1, blink: blink(t, 0.5), blush: 0 };
@@ -677,7 +676,7 @@
   // 8b 背面:背上的空氣瓶;救生索扣上背後的 D 環(喀);沿著梯子下去。鏡頭拉遠:三腳架、捲揚器、送風機還在轉、阿樹在警示線外
   function descendState(t) {
     const st = ease.inOutCubic(clamp((t - ev.down) / 0.55)), dn = Math.max(0, t - ev.down - 0.55);
-    const x = lerp(RX + 8, MC, st), y = FL + 36 * st + dn * 120;
+    const x = lerp(RX + 8, MC, st), y = FL + 36 * st + dn * 135;
     const ph = dn * 2.6, a = Math.sin(ph * Math.PI);
     const o = { x, y, s: SS, style: CAST.rescuer, seed: 500, scba: true };
     const rail = (sd, wy) => toLocal(o, MC + sd * LADW, wy);
@@ -687,14 +686,14 @@
   }
   function descend(ctx, t) {
     const d = descendState(t), clipped = t >= ev.clip;
-    const zu = ease.inOutCubic(clamp((t - ev.down - 0.05) / 1.1));
-    const c = camMix({ x: 440, y: 760, z: 1.75 }, { x: 515, y: 900, z: 0.97 }, zu);
+    const zu = ease.inOutCubic(clamp((t - ev.clip - 0.5) / 1.2));
+    const c = camMix({ x: 450, y: 760, z: 1.75 }, { x: 500, y: 900, z: 0.97 }, zu);
     const crank = Math.max(0, t - ev.down - 0.4) * 5;
     let D = null;
     cam(ctx, c, () => site(ctx, t, { light: 0.9, tripod: { crank }, cones: true, blower: { x: BLOWER_X, u: 1, run: 1, spin: t * 28, inflate: 1 }, people: (tri) => {
       // 警示線外:師傅、阿樹(不參與救援)
-      const mo = { x: 186, y: BWY + 30, s: 0.74, pose: 'stand', style: CAST.master, seed: 440, eyes: 'normal', brows: 'determined', mouth: 'flat', look: 0.7, lookY: 0.1, blink: blink(t, 0.6), blush: 0.2 };
-      const so = { x: 84, y: FL, s: 0.8, pose: 'stand', style: CAST.shu, seed: 400, harness: {}, eyes: 'wide', brows: 'worried', mouth: 'flat', look: 0.8, lookY: 0.3, blink: blink(t, 0.4), blush: 0.3 };
+      const mo = { x: 150, y: BWY + 30, s: 0.74, pose: 'stand', style: CAST.master, seed: 440, eyes: 'normal', brows: 'determined', mouth: 'flat', look: 0.7, lookY: 0.1, blink: blink(t, 0.6), blush: 0.2 };
+      const so = { x: 70, y: FL, s: 0.8, pose: 'stand', style: CAST.shu, seed: 400, harness: {}, eyes: 'wide', brows: 'worried', mouth: 'flat', look: 0.8, lookY: 0.3, blink: blink(t, 0.4), blush: 0.3 };
       const rp = world(mo, -54, -352); mo.handL = toLocal(mo, rp[0] + 5, rp[1] + 34);
       person(ctx, mo); radio(ctx, rp[0], rp[1], -0.2, 0.74); person(ctx, so);
       // 顧捲揚器的人:先扣救生索,再回去搖捲揚器
@@ -724,20 +723,31 @@
   // 9 很多意外,倒下的不只一個……阿樹坐在一旁,手還在抖
   function sitShot(ctx, t) {
     const pu = ease.inOutCubic(clamp((t - ev.hands) / 1.4));
-    const c = camMix({ x: 120, y: 800, z: 1.28 }, { x: -40, y: 955, z: 2.3 }, pu);
-    const tr = Math.sin(t * 31) * 3.2 + Math.sin(t * 19) * 2;
-    const so = { x: -40, y: FL - 6, s: SS, pose: 'floor', style: CAST.shu, seed: 400, harness: {}, eyes: 'normal', brows: 'worried', mouth: 'flat', look: 0.1, lookY: 0.9, blink: blink(t, 0.4), blush: 0.2, sweat: 0.5, headY: 4,
-      handL: [-84 + tr, -2 + tr * 0.6], handR: [84 - tr * 0.8, 2 + tr * 0.5] };
+    const c = camMix({ x: 120, y: 800, z: 1.28 }, { x: -40, y: 820, z: 2.25 }, pu);
+    const tr = Math.sin(t * 31) * 3.2 + Math.sin(t * 19) * 2, SEAT = FL - 126;
+    const so = { x: -40, y: SEAT, s: SS, pose: 'sit', style: CAST.shu, seed: 400, harness: {}, eyes: 'normal', brows: 'worried', mouth: 'flat', look: 0.1, lookY: 0.9, blink: blink(t, 0.4), blush: 0.2, sweat: 0.5, headY: 4,
+      handL: [-46 + tr, 36 + tr * 0.6], handR: [46 - tr * 0.8, 40 + tr * 0.5] };
     const ao = { x: AX, y: FL, s: SS, pose: 'stand', style: CAST.winch, seed: 520, harness: {}, eyes: 'normal', brows: 'determined', mouth: 'flat', look: 0.6, lookY: 0.7, blink: blink(t, 0.7), blush: 0 };
     cam(ctx, c, () => site(ctx, t, { light: 0.9, tripod: { crank: 1.2 }, cones: true, blower: { x: BLOWER_X, u: 1, run: 1, spin: t * 28, inflate: 1 }, people: (tri) => {
       ao.handR = toLocal(ao, tri.knob[0], tri.knob[1]);
       person(ctx, ao);
       stroke(ctx, [tri.pulley, [MC, TT + 300]], '#3A3D44', 4);       // 救生索還接在下面的人身上(畫面外)
+      bucket(ctx, so.x, SEAT, FL);                                   // 倒過來的水桶當椅子
       person(ctx, so);
-      for (const sd of [-1, 1]) { const h = world(so, sd < 0 ? so.handL[0] : so.handR[0], sd < 0 ? so.handL[1] : so.handR[1]); if (pu > 0.3) for (let k = 0; k < 2; k++) stroke(ctx, [[h[0] + sd * (26 + k * 9), h[1] - 12], [h[0] + sd * (30 + k * 9), h[1] + 8]], 'rgba(58,42,32,0.55)', 3); } // 抖動的線
+      if (pu > 0.2) for (const sd of [-1, 1]) { // 手還在抖:手旁邊兩道抖動的線
+        const h = world(so, sd < 0 ? so.handL[0] : so.handR[0], sd < 0 ? so.handL[1] : so.handR[1]), j = Math.sin(t * 40 + sd) * 2;
+        ctx.save(); ctx.globalAlpha *= clamp((pu - 0.2) / 0.3);
+        for (let k = 0; k < 2; k++) stroke(ctx, [[h[0] + sd * (24 + k * 10) + j, h[1] - 16 + k * 4], [h[0] + sd * (30 + k * 10) + j, h[1] - 2], [h[0] + sd * (24 + k * 10) + j, h[1] + 12 - k * 4]], INK, 3.5);
+        ctx.restore();
+      }
     } }));
     fill(ctx, -200, -200, W + 400, H + 400, 'rgba(60,72,96,0.10)');
     finish(ctx, 'rgba(255,240,220,0.10)');
+  }
+  function bucket(ctx, x, top, floorY) {
+    G.poly(ctx, [[x - 64, top + 6], [x + 64, top + 6], [x + 78, floorY], [x - 78, floorY]], { fill: '#6FA0C8', lw: 4.5, seed: 1730, step: 14 });
+    G.rrect(ctx, x - 70, top - 4, 140, 16, 6, { fill: '#5B8DB8', lw: 4, seed: 1731 });
+    for (const yy of [top + 40, top + 80]) G.line(ctx, [[x - 68, yy], [x + 68, yy]], { color: 'rgba(30,60,90,0.35)', lw: 3, seed: 1732 + yy, amp: 0.4 });
   }
   // 10 結尾卡
   function closing(ctx, t) {
