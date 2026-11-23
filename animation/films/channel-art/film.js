@@ -117,12 +117,13 @@
     // 背景的管架(很淡)
     if (v === 2) for (let k = 0; k < 3; k++) { ctx.save(); ctx.globalAlpha = 0.16; pipeRun(ctx, -20, W + 20, 210 + k * 70, 34, '#9FB3C8', 1010 + k * 7); ctx.restore(); }
 
-    const s = 2.15;
-    const mo = { x: 368, y: 455 - HEAD_Y * s, s, pose: 'stand', style: CAST.master, seed: 440, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: 0.05, look: 0.2 };
-    const so = { x: 722, y: 492 - HEAD_Y * s, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: v === 3 ? 'happy' : 'normal', mouth: 'grin', brows: 'up', blush: 0.65, headRot: -0.05, look: -0.25 };
+    // 師傅在左、阿樹在右;師傅左右翻過來,兩頂帽簷都朝外,中間留給兩張臉
+    const s = 2.5;
+    const mo = { x: 372, y: 466 - HEAD_Y * s, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: 0.05, look: 0 };
+    const so = { x: 706, y: 494 - HEAD_Y * s, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: v === 3 ? 'happy' : 'normal', mouth: 'grin', brows: 'up', blush: 0.65, headRot: -0.05, look: -0.15 };
     // 師傅的右手繞到阿樹背後,搭在阿樹另一邊的肩膀上
     const bwS = BW.slim, sShoulder = world(so, 60 * bwS + 4, -326);
-    mo.handR = hand(mo.x, mo.y, s, 1, sShoulder[0], sShoulder[1]);
+    mo.handR = hand(mo.x, mo.y, s, -1, sShoulder[0], sShoulder[1]);
     Ch.person(ctx, mo);
     Ch.person(ctx, so);
     // 搭在肩上的手(畫在阿樹上面)
@@ -174,7 +175,8 @@
 
     // 角色
     const s = 0.95;
-    const mo = { x: 500, y: 872, s, pose: 'stand', style: CAST.master, seed: 440, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: 0.03, look: 0.3 };
+    // 師傅左右翻過來:比讚的手在外側(不被阿樹擋住),帽簷朝外
+    const mo = { x: 502, y: 872, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.03, look: -0.2 };
     const so = { x: 668, y: 884, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: 'grin', brows: 'up', blush: 0.65, look: -0.2 };
     // 阿樹雙手拿著檢核表(各集說明欄的免費工具)
     const cbx = so.x + 4, cby = so.y - 252 * s, cbw = 112 * s, cbh = 136 * s;
