@@ -600,10 +600,10 @@
     const cur = nCards ? nCards - 1 : -1;
     let so, co;
     zoom(ctx, 540, GROUND, ZR, () => {
-      office(ctx, t, { door: 0, hours: 10.2 });
+      office(ctx, t, { door: 1, hours: 10.2 }); // 門還開著(剛走進來)
       // 阿樹:一張一張講
       so = { x: SX, y: GROUND, s: SS, pose: 'stand', style: CAST.shu, seed: 400, blush: 0.6, blink: blink(t, 0.2), eyes: picked ? 'happy' : 'normal', mouth: picked ? 'grin' : talking ? yak(t) : 'smile', brows: picked ? 'up' : 'determined', look: 0.8, lookY: 0 };
-      if (picked && t >= ev.pick + 0.3) so.handR = [108, -322 - 46 - Math.abs(Math.sin((t - ev.pick) * 7)) * 10 * clamp(1 - (t - ev.pick - 0.3) / 1.2)];
+      if (picked && t >= ev.pick + 0.3) so.handR = [84, -322 - 18 - Math.abs(Math.sin((t - ev.pick) * 7)) * 10 * clamp(1 - (t - ev.pick - 0.3) / 1.2)];
       else if (talking && cur >= 0 && split <= 0) { const [wx, wy] = fromW(CPOS[cur][0], CPOS[cur][1] + 100); so.handR = reach(so, 1, wx, wy, 150); so.lookY = -0.5; so.look = cur % 2 ? 0.8 : 0.1; }
       else so.handR = [92, -150 - 30];
       so.handL = [-60, -150 - 34];
