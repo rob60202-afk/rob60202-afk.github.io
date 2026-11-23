@@ -235,7 +235,7 @@
   function twoShot(ctx, t) {
     office(ctx, t);
     boardBuilding(ctx, t, TWO);
-    const SH = { x: 330, y: 1030, s: 1.25 }, MA = { x: 770, y: 1030, s: 1.25 };
+    const SH = { x: 330, y: 1030, s: 1.3 }, MA = { x: 770, y: 1030, s: 1.3 }; // 中景 s = 1.3(LONGFORM 版面約定 1.3–1.45)
     const mm = mouth('master', t), sm = mouth('shu', t);
     // ---- 阿樹 ----
     const so = { ...SH, pose: 'stand', style: CAST.shu, seed: 400, eyes: 'normal', mouth: sm || 'wavy', brows: 'worried', look: 0.5, lookY: 0.1, blink: blink(t, 0.1), blush: 0.4 };
