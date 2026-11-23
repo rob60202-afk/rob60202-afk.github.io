@@ -105,7 +105,15 @@ bash animation/tools/restore-engines.sh
    python3 animation/tools/voice_key.py put "zh-TW" "這麼高,你的高空車,算在哪一行?" 下載的檔案.mp3
    ```
 
-3. 回到該集資料夾,重跑 `prep-voice.js`、`song.js`,再算圖。配音長度變了,時間軸會跟著自動調整。
+3. 回到該集資料夾,**先把引擎自己的語音快取移開**(引擎會把每一句存在 `out/.vo-cache`,不移開就會沿用舊的免費語音):
+
+   ```bash
+   mv out/.vo-cache out/.vo-cache-old
+   ```
+
+4. 重跑 `prep-voice.js`、`song.js`,再算圖。配音長度變了,時間軸會跟著自動調整。
+
+用付費服務一次產生多句(多人對話)時,回傳的分句時間不一定準,切句要用實際的停頓位置,不然下一句的第一個字會被切進上一句。第 1 集的做法:用 ffmpeg 的 silencedetect 找停頓,在每個分句時間附近最長的停頓處切開。
 
 代號只看語言與文字,不看音高設定;同一句文字在不同集會共用同一個錄音。付費錄音有花錢,`voice-cache/` 要進版控。
 
