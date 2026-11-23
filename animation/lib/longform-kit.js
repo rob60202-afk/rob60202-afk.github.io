@@ -348,6 +348,16 @@
       pipeRun(ctx, -40, W + 40, py + dy, th, c, 3240 + k * 7);
       for (const hx of o.hangers) for (const sx of [-34, 34]) G.rrect(ctx, hx + sx - 7, py + dy - th / 2 - 6, 14, th + 12, 3, { fill: '#6C7680', lw: 3, seed: 3260 + k * 13 + hx + sx }); // 管夾
     });
+    // 很高的廠房(上搖用):牆上中段的風管與電纜架,讓鏡頭往上拉的時候一路有東西經過
+    if (o.duct != null) {
+      G.rrect(ctx, -40, o.duct, W + 80, 120, 6, { fill: '#C9D1D8', lw: 5, seed: 3280, hatch: { color: 'rgba(60,80,100,0.06)', gap: 10 } });
+      for (let x = 100; x < W; x += 320) G.rrect(ctx, x - 10, o.duct - 6, 20, 132, 3, { fill: '#AEB9C3', lw: 3.5, seed: 3281 + x });
+    }
+    if (o.tray != null) {
+      for (const sy of [0, 46]) G.line(ctx, [[-40, o.tray + sy], [W + 40, o.tray + sy]], { color: '#8E99A3', lw: 7, seed: 3290 + sy });
+      for (let x = 20; x < W; x += 60) G.line(ctx, [[x, o.tray], [x, o.tray + 46]], { color: '#8E99A3', lw: 4, seed: 3292 + x, amp: 0.4 });
+      for (const cx of o.columns) G.rrect(ctx, cx - 50, o.tray + 44, 100, 14, 3, { fill: '#7F8B96', lw: 3.5, seed: 3300 + cx });
+    }
     // 地坪
     fill(ctx, -300, fy, W + 600, 800, lin(ctx, 0, fy, 0, H + 200, [[0, '#BCCAC4'], [1, '#93A29D']]));
     floorLines(ctx, '#6C7A75', 3300, fy);
@@ -932,6 +942,39 @@
     ctx.save(); ctx.globalAlpha *= a; ctx.translate(x, y); ctx.scale(pop, pop);
     G.text(ctx, c.text, 0, 0, { size, fam: CJK, weight: 800, color: col, stroke: '#1E1611', strokeW: size * 0.24, align: 'center', boil: 0 });
     ctx.restore();
+  };
+
+  // ============================== L003 專用的故事道具 ==============================
+  // 第 1 章出現、後面章節還會再用的東西:每個單元都要一模一樣,所以放在這裡
+  KIT.L003 = {
+    TABLE1_TITLE: '【表 1】阿樹版報價單',
+    // 表 1:阿樹版報價單(附錄 A「阿樹版」)。key 讓各單元加時間:rows.map((r) => ({ ...r, at: …[r.key] }))
+    TABLE1: [
+      { key: 'mat', cells: ['材料', '120,000'] },
+      { key: 'wage', cells: ['工資', '80,000'] },
+      { key: 'sub', cells: ['小計', '200,000'], kind: 'sub' },
+      { key: 'fee', cells: ['管理費與利潤 10%', '20,000'] },
+      { key: 'net', cells: ['未稅合計', '220,000'], kind: 'sub' },
+      { key: 'tax', cells: ['稅 5%', '11,000'] },
+      { key: 'total', cells: ['含稅總價', '231,000'], kind: 'total' },
+    ],
+    // 印出來的報價單(開場鉤子、第 2 章):四行 + 含稅
+    QUOTE: [
+      { key: 'mat', cells: ['材料', '120,000'] },
+      { key: 'wage', cells: ['工資', '80,000'] },
+      { key: 'fee', cells: ['管理費與利潤', '20,000'] },
+      { key: 'tax', cells: ['稅', '11,000'] },
+      { key: 'total', cells: ['含稅', '231,000'], kind: 'total' },
+    ],
+    // 班長傳來的那一則報價訊息:金額很大很亮,最後一行小字(第 1 章只看金額;第 5 章往上滑回來看最後一行)
+    CREW_QUOTE: { parts: [
+      { text: '阿樹，報價如下' },
+      { text: '2 人 × 10 天' },
+      { text: '一人一天 4,000' },
+      { text: '80,000', size: 76, font: NUM, color: '#1F7A45', big: true },
+      { text: '以上純工資，不含高空車、清運、入廠訓練', size: 34, color: '#6C7680' },
+    ] },
+    SHU_ASK: { me: true, text: '工資多少？' },
   };
 
   globalThis.KIT = KIT;
