@@ -379,7 +379,7 @@
       }
       ctx.restore();
       // 層號(左邊的圓)
-      const chipA = st.lit > 0 ? 1 : 0.6, cr = Math.max(25, size * 0.62);
+      const cr = Math.max(25, size * 0.62);
       ctx.save(); ctx.globalAlpha *= (a < 1 && st.missing > 0 ? 0.6 + 0.4 * a : 1);
       stroke(ctx, [[numX + cr, y0 + fh / 2], [Math.min(x0, cx - w / 2) - 4, y0 + fh / 2]], st.lit > 0 ? f.chip : '#C9C0B0', 3);
       const chipFill = st.lit <= 0 ? '#E4DDCF' : st.missing > 0 ? '#FFFFFF' : f.chip, chipInk = st.lit <= 0 ? '#5E5246' : st.missing > 0 ? C.red : '#FFFFFF';
@@ -387,7 +387,6 @@
       num(ctx, String(i + 1), numX, y0 + fh / 2 + Math.max(34, size * 0.8) * 0.36, Math.max(34, size * 0.8), chipInk);
       ctx.restore();
       if (st.check > 0) KIT.tick(ctx, cx + ww / 2 + 34, y0 + fh / 2, 24, ease.outBack(clamp(st.check)), { seed: 2120 + i });
-      void chipA;
     }
     // 屋頂(女兒牆)
     if (o.roof > 0) {

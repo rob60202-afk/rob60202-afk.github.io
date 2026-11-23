@@ -137,12 +137,12 @@
     Bb: { notes: ['D4', 'F4', 'Bb4'], bass: 'Bb1' }, C: { notes: ['E4', 'G4', 'C5'], bass: 'C2' },
   }, Array.from({ length: BARS }, (_, b) => [b, 0, 4, ['F', 'Dm', 'Bb', 'C'][b % 4]]));
   const markers = {
-    ch3: { t: 0.02, sync: 'a' }, walk: ev.walk[0] + 0.6, notScold: ev.notScold, draw0: ev.draw0, draw: ev.draw[0] + 1.2, drawn: ev.draw[1],
+    ch3: 0.02, walk: ev.walk[0] + 0.6, notScold: ev.notScold, draw0: ev.draw0, draw: ev.draw[0] + 1.2, drawn: ev.draw[1],
     layers: ev.layers[0] + 0.3, offer: ev.offer, take: ev.take, write0: ev.write0, w1: ev.w[0][1], hover: ev.hover[0] + 0.2, w4: ev.w[3][1], four: ev.four,
     gap: ev.gap + 0.3, fall: { t: ev.fall, sync: 'a' }, fallen: ev.fall + 0.8,
     figB: ev.figB, f1: ev.i1[3] + 0.2, f2: ev.i2[1] + 0.3, f3: ev.i3[2] + 0.3, f4: ev.i4[5] + 0.3, leave: ev.leave + 0.4, money: ev.money + 1.0,
     f5: ev.n[4] + 0.4, done: ev.done + 0.3, miss: ev.miss + 0.5, miss4: ev.miss4 + 0.6,
-    cmp: ev.cmp + 0.5, self: ev.self, client: ev.client + 0.4, format: ev.format + 1.2, fewer: ev.fewer + 1.0, stamp: { t: ev.stamp, sync: 'av' }, all: ev.all + 0.8, check: ev.check + 1.4,
+    cmp: ev.cmp + 0.5, self: ev.self, client: ev.client + 0.4, format: ev.format + 1.2, fewer: ev.fewer + 1.0, stamp: { t: ev.stamp, sync: 'v' }, all: ev.all + 0.8, check: ev.check + 1.4,
     pub: ev.pub + 0.5, safety: ev.safety + 0.3, qc: ev.qc + 0.3, none: ev.none + 0.4, hole: ev.hole + 0.3, leak: ev.leak + 1.2,
     back: ev.back + 0.3, split: ev.split + 0.5, mgmt: ev.mgmt + 0.5, profit: ev.profit + 0.5, yours: ev.yours + 0.5, aha: ev.aha + 0.3,
     quote: ev.quote + 0.3, point: ev.point + 0.3, tap: ev.tap + 0.2,

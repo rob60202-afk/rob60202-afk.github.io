@@ -73,7 +73,7 @@ ev.rows.forEach((t, k) => note(SCALE[k + 1], t, 0.18));
 ev.wave.forEach((t, k) => fx.addMono(I.noiseSweep(0.5, 900, 2400, { q: 1.4, pink: true }), t, 0.035));
 ev.land.forEach((t, k) => coin(t, k, 0.15));
 fx.addMono(I.thud(110, 0.2), ev.stamp, 0.6); fx.addMono(I.thwack(), ev.stamp, 0.22);
-chime(['C5', 'E5', 'G5'], ev.stamp + 0.1, 0.1, 0.24);
+chime(['C5', 'E5', 'G5'], ev.stamp + 0.32, 0.1, 0.24); // 章的咚聲之後才響(verify 才分得清楚哪一下是蓋章)
 ev.ticks.forEach((t, k) => { fx.addMono(I.scribble(0.12, 60 + k), t, 0.12); note(SCALE[2 + k], t + 0.05, 0.17); });
 // 公共工程標單 vs 民間報價單:錢從破洞漏出去
 fx.addMono(I.paperFwip(0.95), ev.pub + 0.15, 0.35); fx.addMono(I.paperFwip(1.1), ev.pub + 0.45, 0.3);
