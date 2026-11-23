@@ -57,10 +57,10 @@ fx.addMono(I.noiseSweep(0.8, 300, 900, { q: 0.9, pink: true }), ev.gap, 0.14);
 [0, 0.1, 0.2].forEach((d, k) => paper(ev.months + d, 1.2 + k * 0.1, 0.14, 60 + k)); // 月曆翻頁
 // ---- 7 空白變紅、存錢筒見底、停工 ----
 [0, 0.5].forEach((d) => { fx.addMono(I.bell(880, 0.25, 1.2, 1.0), ev.red + d, 0.12); fx.addMono(I.bell(660, 0.25, 1.2, 1.0), ev.red + d + 0.22, 0.12); });
-for (let k = 0; k < 14; k++) coin(ev.pour + 0.25 + k * 0.105 + (k % 3) * 0.02, 0.9 + (k % 4) * 0.07, 0.11);
+ev.coins.forEach((tc, k) => { coin(tc + 0.03, 1.15 + (k % 3) * 0.05, 0.06); coin(tc + 0.45, 0.9 + (k % 4) * 0.07, 0.11); }); // 投出去、落進空白
 [0, 0.16, 0.32, 0.5].forEach((d, k) => fx.addMono(I.shaker(0.5), ev.empty + 0.25 + d, 0.22 - k * 0.03)); // 搖一搖,沒有聲音
 fx.addMono(I.tom(150, 0.18), ev.empty + 0.08, 0.3);
-stamp(ev.empty + 0.95, 0.5);                                                       // 見底
+stamp(ev.bottom, 0.5);                                                             // 見底
 fx.addMono(I.subBoom(1.6, 58, 30), ev.stall, 0.32);
 fx.addMono(I.noiseSweep(1.8, 250, 500, { q: 0.7, pink: true }), ev.stall + 0.1, 0.05); // 空蕩蕩的工地
 stamp(ev.halt, 0.65);
@@ -72,7 +72,7 @@ pop(ev.card2, 2000, 0.26); fx.addMono(I.scribble(0.45), ev.card2 + 0.5, 0.12); c
 for (let k = 0; k < 9; k++) fx.addMono(I.woodTick(1.6 + (k % 3) * 0.12), ev.desk + 0.35 + k * 0.11, 0.07); // 打字
 fx.addMono(I.noiseSweep(0.4, 600, 2600, { q: 1 }), ev.table - 0.2, 0.12); pop(ev.table + 0.15, 1800, 0.3);
 ['A5', 'G5', 'F5', 'E5', 'D5'].forEach((n, k) => mar(n, ev.pay + k * 0.24, 0.2));
-mar('C6', ev.recv + 0.55, 0.3); coin(ev.recv + 0.6, 1, 0.12);
+mar('C6', ev.recv + 0.5, 0.3); coin(ev.recv + 0.55, 1, 0.12);
 for (let k = 0; k < 8; k++) fx.addMono(I.woodTick(1.2 + k * 0.05), ev.cum + k * 0.07, 0.08);
 pop(ev.worst, 1300, 0.3); fx.addMono(I.tom(120, 0.2), ev.worst, 0.24);
 // ---- 10 結尾卡 ----

@@ -94,14 +94,17 @@
     desk: r3(A[11] - 0.15),
     table: r3(when(11, '多做一張表') - 0.1),            // 推進螢幕,收支表出現
     pay: when(11, '哪個月要付多少'),                    // 付出欄一格一格填
-    recv: when(11, '哪個月能收多少'),                   // 收入欄
-    cum: r3(E[11] - 0.25),                              // 累計欄
-    worst: r3(E[11] + 0.3),                             // 最大缺口圈起來
+    recv: when(11, '哪個月能收多少'),                   // 收入欄(第 8 月的 90 在 recv + 0.5)
     // 10 結尾卡
     card: r3(A[12] - 0.1),
     line2: when(12, '活不活得下去'),
     end: r3(E[12] + 0.3),
   };
+  ev.cum = r3(ev.recv + 0.85);                          // 累計欄一格一格出來
+  ev.worst = r3(ev.recv + 1.45);                        // 最大缺口圈起來
+  // 存錢筒的錢一枚一枚倒進空白(14 枚,最後一枚在「墊不出來」之前出去;飛 0.45 秒)
+  ev.coins = Array.from({ length: 14 }, (_, k) => r3(ev.pour + 0.2 + k * ((ev.empty - 0.25) - (ev.pour + 0.2)) / 13));
+  ev.bottom = r3(ev.empty + 0.3);                       // 「見底」章
   const { chords, chordAt } = makeChords(clock, {
     F: { notes: ['F4', 'A4', 'C5'], bass: 'F2' }, Dm: { notes: ['D4', 'F4', 'A4'], bass: 'D2' },
     Bb: { notes: ['D4', 'F4', 'Bb4'], bass: 'Bb1' }, C: { notes: ['E4', 'G4', 'C5'], bass: 'C2' },
@@ -111,7 +114,7 @@
     contract: ev.contract, open: ev.open, clause1: ev.clause1, accept: ev.accept, clause2: ev.clause2, stretch: ev.stretch, land: ev.land,
     bills: ev.bills, burst: ev.burst, mat: ev.mat, wage1: ev.wages[0], wage5: ev.wages[4],
     axes: ev.axes, out: ev.out, in: ev.in, gap: ev.gap, months: ev.months,
-    red: ev.red, pour: ev.pour, empty: ev.empty, stall: ev.stall, halt: ev.halt,
+    red: ev.red, pour: ev.pour, coin7: ev.coins[7], empty: ev.empty, bottom: ev.bottom, stall: ev.stall, halt: ev.halt,
     rest: ev.rest, speak: ev.speak, card1: ev.card1, card2: ev.card2,
     desk: ev.desk, table: ev.table, pay: ev.pay, recv: ev.recv, cum: ev.cum, worst: ev.worst,
     card: ev.card, line2: ev.line2, end: ev.end,
