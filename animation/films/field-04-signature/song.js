@@ -20,7 +20,7 @@ fx.addMono(I.pop(1.5), ev.yes, 0.42);                                         //
 chime(['A4', 'C5'], ev.yes + 0.12, 0.1, 0.24);
 ev.mats.forEach((t, k) => fx.addMono(I.woodTick(1 + k * 0.1), t, 0.42));      // 多用了材料
 ev.days.forEach((t) => { fx.addMono(I.paperFwip(1.0), t, 0.46); fx.addMono(I.thud(90, 0.18), t + 0.12, 0.4); }); // 兩張日曆
-[0, 1, 2].forEach((k) => { const t = ev.real[0] + 0.25 + k * (ev.real[1] - ev.real[0]) / 3; fx.addMono(I.bell(640 - k * 60, 0.2, 3.2, 2.76), t, 0.14); fx.addMono(I.thwack(), t, 0.22); }); // 鎖管
+ev.built.forEach((t, k) => { fx.addMono(I.bell(640 - k * 60, 0.2, 3.2, 2.76), t, 0.14); fx.addMono(I.thwack(), t, 0.22); }); // 鎖管
 fx.addMono(I.pop(1.4), ev.proud, 0.35);                                       // 覺得這是服務
 fx.addMono(I.paperFwip(0.9), ev.sheet, 0.5);                                  // 請款單
 fx.addMono(I.scribble(0.4), ev.strike, 0.5);                                  // 紅線劃掉
