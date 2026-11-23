@@ -645,8 +645,8 @@
       bigCard(ctx, x, y, OW, OH, { ...c, col: GREEN }, 0, { a: u * tap * (on ? 1.04 : 1), rot: k ? 0.015 : -0.015, dim: k === 0 && picked ? clamp((t - ev.pick) / 0.3) : 0, glow: on ? clamp((t - ev.pick) / 0.2) : 0, seed: 900 + k * 12 });
       if (k === 1) tickMark(ctx, x + OW / 2 - 26, y - OH / 2 + 10, 42, popIn(t, ev.pick, 0.25), 960);
     });
-    if (t >= ev.point + 0.3 && t < ev.point + 0.75) { const q = (t - ev.point - 0.3) / 0.45; ctx.save(); ctx.globalAlpha = 1 - q; ctx.strokeStyle = GREEN; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(OPOS[1][0] + 120, OPOS[1][1] + 50, 30 + q * 70, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); } // 指到的地方
-    if (picked && t < ev.pick + 0.35) { const q = (t - ev.pick) / 0.35; burst(ctx, OPOS[1][0], OPOS[1][1], 220 + q * 50, 255 + q * 70, 1 - q, 12, GREEN, 9); }
+    if (t >= ev.point + 0.3 && t < ev.point + 0.75) { const q = (t - ev.point - 0.3) / 0.45; ctx.save(); ctx.globalAlpha = 1 - q; ctx.strokeStyle = GREEN; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(OPOS[1][0] + 156, OPOS[1][1] + 34, 18 + q * 44, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); } // 指到的地方
+    if (picked) [[612, 676], [618, 790], [604, 892], [160, 842]].forEach(([x, y], j) => { const b = popIn(t, ev.pick + 0.04 + j * 0.05, 0.22) * clamp(1 - (t - ev.pick - 0.8) / 0.3); if (b > 0) G.star(ctx, x, y, 20 * b, { fill: '#FFF2A8', rot: t * 1.5 + j, seed: 64 + j }); });
     finish(ctx);
   }
   function closing(ctx, t) { // 9:結尾

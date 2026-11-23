@@ -6,7 +6,7 @@
   const W = G.W, H = G.H;
   const CJK = '"WenQuanYi Zen Hei", "Noto Sans CJK TC", sans-serif';
   const GROUND = 1300, INK = '#3A2A20', RED = '#C8452F', GREEN = '#3E9B5F', BLUE = '#2B5FA8';
-  const PAPER = '#FFFDF4', MUTED = '#7A6650', PINK = '#E3A0B4';
+  const PAPER = '#FFFDF4', MUTED = '#7A6650';
   let VO = null, SUBS = [];
 
   // ---------- 角色(與前幾集相同的造型;這一集在辦公室與休息區,沒有人戴安全帽) ----------
@@ -37,7 +37,7 @@
   const mouthOf = (who, t) => { const m = Subs.mouth(VO, t, who); return m && m.talking ? m : null; };
   const blink = (t, seed) => ((t * 0.37 + seed) % 1) > 0.965 ? 1 : 0;
   const label = (ctx, str, x, y, size, color = INK, o = {}) => G.text(ctx, str, x, y, { size, fam: CJK, weight: 800, color, align: 'center', boil: 0, ...o });
-  const popIn = (t, t0, d = 0.3) => ease.outBack(clamp((t - t0) / d));
+  const popIn = (t, t0, d = 0.3) => { const u = clamp((t - t0) / d); return u <= 0 ? 0 : ease.outBack(u); };
   const hand = (px, py, s, sx, wx, wy) => [(wx - px) / (s * sx), (wy - py) / s]; // 畫面座標 → 角色手的目標
   const mix2 = (a, b, u) => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
   function finish(ctx, warm = 'rgba(255,214,140,0.18)') {
@@ -165,7 +165,7 @@
   }
   function cloudTail(ctx, pts, a, seed) { pts.forEach(([x, y, r], k) => { const b = clamp(a * 1.6 - k * 0.3); if (b > 0) G.ellipse(ctx, x, y, r * b, r * b, { fill: '#FFFFFF', lw: 4, seed: seed + k, amp: 0.4 }); }); }
   function speech(ctx, cx, cy, w, h, tip, a, seed) { // 對話框,尾巴指向 tip
-    if (a <= 0) return;
+    if (a < 0.05) return;
     ctx.save(); ctx.translate(cx, cy); ctx.scale(a, a);
     const tx = (tip[0] - cx) / a, ty = (tip[1] - cy) / a, bx = clamp(tx * 0.45, -w / 2 + 70, w / 2 - 70);
     const pts = G.rrPts(-w / 2, -h / 2, w, h, 46, 18);
@@ -206,11 +206,14 @@
     for (let q = 0; q < 4; q++) { ctx.save(); ctx.rotate(q * Math.PI / 2 + 0.35); for (const [c, w] of [['#FFFFFF', r * 0.42], [RED, r * 0.22]]) stroke(ctx, [[r * 0.22, -r], [r * 0.3, -r * 0.42], [r, -r * 0.24]], c, w); ctx.restore(); }
     ctx.restore();
   }
-  function grumble(ctx, x, y, r, a, t) { // 碎念的一團亂線
-    if (a <= 0) return;
-    const pts = [], b = Math.floor(t * 8);
-    for (let i = 0; i <= 54; i++) { const an = i * 0.62 + b * 0.4, rr = r * (0.5 + 0.5 * Math.abs(Math.sin(i * 1.31 + b))); pts.push([x + Math.cos(an) * rr * a, y + Math.sin(an) * rr * 0.72 * a]); }
-    stroke(ctx, pts, 'rgba(255,255,255,0.85)', 12); stroke(ctx, pts, INK, 5.5);
+  function nagBubble(ctx, x, y, tip, a, t) { // 唸人的對話框:一串碎念的線 + 驚嘆號
+    if (a < 0.05) return;
+    const sh = Math.sin(t * 31) * 3;
+    speech(ctx, x + sh, y, 232, 136, tip, a, 1460);
+    ctx.save(); ctx.translate(x + sh, y); ctx.scale(a, a);
+    for (let r = 0; r < 2; r++) { const pts = []; for (let j = 0; j <= 11; j++) pts.push([-88 + j * 13, -20 + r * 40 + (j % 2 ? -9 : 9)]); stroke(ctx, pts, INK, 6); }
+    label(ctx, '!', 80, 30, 86, RED);
+    ctx.restore();
   }
   function shock(ctx, x, y, r, a) { // 嚇一跳的短線
     if (a <= 0) return;
@@ -232,10 +235,6 @@
     label(ctx, '第' + k + '天', 0, 46, 66, INK);
     ctx.restore();
   }
-  function pawn(ctx, x, y, s, col, seed) { // 簡化的小人圖示
-    G.rrect(ctx, x - 26 * s, y - 62 * s, 52 * s, 62 * s, 22 * s, { fill: col, lw: 4, seed });
-    G.ellipse(ctx, x, y - 84 * s, 22 * s, 22 * s, { fill: col, lw: 4, seed: seed + 1 });
-  }
   function steam(ctx, x, y, t, k, a = 0.6) {
     const u = (t * 0.6 + k * 0.37) % 1;
     G.line(ctx, [[x, y - u * 46], [x + Math.sin(t * 3 + k) * 7, y - 22 - u * 46], [x - Math.sin(t * 3 + k) * 5, y - 44 - u * 46]], { color: '#FFFFFF', lw: 5, seed: 880 + k, alpha: a * (1 - u) });
@@ -244,15 +243,17 @@
   function rewindFX(ctx, t, k) {
     if (k <= 0) return;
     ctx.save();
-    fillRect(ctx, -200, -200, W + 400, H + 400, `rgba(225,232,255,${0.22 * k})`);
-    for (let j = 0; j < 8; j++) {
-      const y = -200 + ((t * (2.4 + j * 0.41) + j * 0.29) % 1) * (H + 400), h = 8 + 30 * ((j * 0.53) % 1);
-      ctx.globalAlpha = k * (0.3 + 0.35 * ((j * 0.71) % 1));
-      fillRect(ctx, -200, y, W + 400, h, j % 2 ? '#FFFFFF' : '#AFC0E8');
+    fillRect(ctx, -200, -200, W + 400, H + 400, `rgba(24,32,64,${0.3 * k})`);
+    for (let j = 0; j < 9; j++) { // 往下捲的亮帶
+      const y = -200 + ((t * (2.2 + j * 0.37) + j * 0.29) % 1) * (H + 400), h = 12 + 40 * ((j * 0.53) % 1);
+      ctx.globalAlpha = k * (0.5 + 0.4 * ((j * 0.71) % 1));
+      fillRect(ctx, -200, y, W + 400, h, j % 3 ? '#E4ECFF' : '#FFFFFF');
+      ctx.globalAlpha = k * 0.6; fillRect(ctx, -200, y + h, W + 400, 5, '#1A2040');
     }
     ctx.globalAlpha = k;
-    ctx.save(); ctx.translate(250, 420);
-    for (const dx of [0, 62]) G.poly(ctx, [[dx + 60, -42], [dx + 60, 42], [dx, 0]], { fill: '#FFFFFF', lw: 6, seed: 1400 + dx });
+    ctx.save(); ctx.translate(540, 560); // ◀◀
+    G.rrect(ctx, -160, -86, 320, 172, 34, { fill: 'rgba(16,18,30,0.62)', lw: 0, seed: 1399 });
+    for (const dx of [-66, 8]) G.poly(ctx, [[dx + 64, -54], [dx + 64, 54], [dx - 4, 0]], { fill: '#FFFFFF', lw: 6, seed: 1400 + dx });
     ctx.restore();
     ctx.restore();
   }
@@ -335,41 +336,44 @@
   }
 
   // ---------- 0:阿樹當課長後,最常講的一句話是:這個你處理一下 ----------
-  const SX0 = 250, SX = 430, FX = 760, SS = 1.05;
+  const SX0 = 272, SX = 430, FX = 760, SS = 1.05;
   const HOLD_SHU = [48, -232], REACH_SHU = [120, -235], REACH_STAFF = [92, -238], HOLD_STAFF = [60, -228], STACK_HW = 68 * SS * 0.95;
   function handoverState(t) {
-    const wu = clamp((t - ev.walk) / 1.0), turned = t >= ev.turn;
-    const x = turned ? SX - 450 * (t - ev.turn) : lerp(SX0, SX, ease.inOutQuad(wu));
+    const wu = clamp((t - ev.walk) / 0.9), turned = t >= ev.turn;
+    const x = turned ? SX - 450 * (t - ev.turn) : lerp(SX0, SX, wu);
     const walking = (wu > 0 && wu < 1) || turned;
-    const walk = turned ? ((SX - x) / (300 * SS)) % 1 : ((x - SX0) / 180) % 1;
+    const walk = turned ? ((SX - x) / (300 * SS)) % 1 : ((x - SX0) / (SX - SX0)) % 1;
     const shu = { x, y: GROUND, s: SS, sx: turned ? -1 : 1, pose: walking ? 'walk' : 'stand', walk, style: CAST.shuChief, seed: 400, blush: 0.6, blink: blink(t, 0.2) };
     const fo = { x: FX, y: GROUND, s: SS, sx: -1, pose: 'stand', style: CAST.staff, seed: 520, blush: 0.5, blink: blink(t, 0.7) };
     const ext = ease.inOutCubic(clamp((t - (ev.hand - 0.45)) / 0.4));   // 把資料伸出去
     const mv = ease.inOutCubic(clamp((t - (ev.hand - 0.05)) / 0.3));   // 交到她手上
     const pull = ease.inOutCubic(clamp((t - (ev.hand + 0.25)) / 0.4)); // 她抱回胸前
     const still = { ...shu, x: SX, pose: 'stand', sx: 1 };
+    const p0 = world(still, ...REACH_SHU), p1 = world(fo, ...REACH_STAFF), p2 = world(fo, ...HOLD_STAFF);
+    const path = (k) => [lerp(p0[0], p1[0], k), lerp(p0[1], p1[1], k) - Math.sin(Math.PI * k) * 16];
     let st;
     if (mv <= 0) { const l = mix2(HOLD_SHU, REACH_SHU, ext); st = world(shu, l[0], l[1]); }
-    else {
-      const p0 = world(still, ...REACH_SHU), p1 = world(fo, ...REACH_STAFF), p2 = world(fo, ...HOLD_STAFF);
-      st = mv < 1 ? [lerp(p0[0], p1[0], mv), lerp(p0[1], p1[1], mv) - Math.sin(Math.PI * mv) * 16] : mix2(p1, p2, pull);
-    }
-    return { shu, fo, st, ext, mv, pull, turned };
+    else st = mv < 1 ? path(mv) : mix2(p1, p2, pull);
+    return { shu, fo, st, ext, mv, pull, turned, let: path(0.45) }; // let:他放手的那一點
   }
   function handover(ctx, t) {
-    const { shu, fo, st, ext, mv, turned } = handoverState(t);
+    const { shu, fo, st, ext, mv, turned, let: lp } = handoverState(t);
     officeDay(ctx); staffDesk(ctx, t);
     const shuHolds = mv < 0.45, gotIt = mv > 0.45, heavy = gotIt && !turned ? 1 : gotIt ? 0.6 : 0;
     // 阿樹
     Object.assign(shu, t < ev.walk ? { eyes: 'happy', mouth: 'grin', brows: 'up', look: 0.2 } : turned ? { eyes: 'happy', mouth: 'smile', brows: 'neutral', look: 0.5, gesture: 'wave' } : { eyes: 'normal', mouth: 'smile', brows: 'neutral', look: 0.7, lookY: 0.1 });
     if (shuHolds) { shu.handL = toLocal(shu, st[0] - STACK_HW, st[1] + 6); shu.handR = toLocal(shu, st[0] + STACK_HW, st[1] + 6); }
-    else if (!turned) { const r = clamp((t - ev.hand - 0.05) / 0.35); shu.handL = mix2(toLocal(shu, st[0] - STACK_HW, st[1] + 6), [-92, -180], r); shu.handR = mix2([REACH_SHU[0] + 66, REACH_SHU[1] + 6], [92, -180], r); }
+    else if (!turned) { const r = ease.inOutCubic(clamp((t - ev.hand - 0.095) / 0.4)); shu.handL = mix2(toLocal(shu, lp[0] - STACK_HW, lp[1] + 6), [-92, -180], r); shu.handR = mix2(toLocal(shu, lp[0] + STACK_HW, lp[1] + 6), [92, -180], r); }
     // 部屬
     const watching = t >= ev.walk - 0.2;
     Object.assign(fo, !watching ? { eyes: 'normal', mouth: 'flat', brows: 'neutral', look: -0.55, lookY: 0.25 } : t < ev.hand - 0.45 ? { eyes: 'normal', mouth: 'smile', brows: 'neutral', look: 0.6 } : !turned ? { eyes: 'wide', mouth: 'o', brows: 'up', look: 0.45, lookY: 0.4, sweat: 0.5 } : { eyes: 'normal', mouth: 'wavy', brows: 'worried', look: 0.95, lookY: -0.05, sweat: 0.6, headRot: 0.04 });
     fo.legBend = 0.12 * heavy;
     if (gotIt) { fo.handR = toLocal(fo, st[0] - STACK_HW, st[1] + 6); fo.handL = toLocal(fo, st[0] + STACK_HW, st[1] + 6); }
-    else if (ext > 0) { const r = ext; fo.handR = mix2([92, -180], [REACH_STAFF[0] + 66, REACH_STAFF[1] + 10], r); fo.handL = mix2([-92, -180], [REACH_STAFF[0] - 66, REACH_STAFF[1] + 10], r); }
+    else if (ext > 0) { // 先伸手準備接,資料過來時手迎上去,接住的那一格剛好在資料兩側
+      const k = clamp(mv / 0.45);
+      fo.handR = mix2(mix2([92, -180], [REACH_STAFF[0] + 66, REACH_STAFF[1] + 10], ext), toLocal(fo, st[0] - STACK_HW, st[1] + 6), k);
+      fo.handL = mix2(mix2([-92, -180], [REACH_STAFF[0] - 66, REACH_STAFF[1] + 10], ext), toLocal(fo, st[0] + STACK_HW, st[1] + 6), k);
+    }
     Ch.person(ctx, fo);
     person(ctx, shu);
     paperStack(ctx, st[0], st[1], SS * 0.95);
@@ -445,7 +449,7 @@
       const a = popIn(t, ev.dream, 0.35), droop = wrong ? ease.outCubic(clamp((t - ev.wrong) / 0.45)) : 0;
       cloudTail(ctx, [[HX + 18, 776, 10], [HX - 2, 742, 15]], a, 1700);
       cloud(ctx, CLOUD[0], CLOUD[1], CLOUD[2], CLOUD[3], a, 1710, droop);
-      if (a > 0.6) { ctx.save(); ctx.translate(CLOUD[0], CLOUD[1] + droop * 14); ctx.rotate(droop * 0.045); ctx.scale(a, a); neatTable(ctx, -136, -86, 272, 182, 1730); ctx.restore(); }
+      if (a > 0.6) { ctx.save(); ctx.translate(CLOUD[0], CLOUD[1] + droop * 14); ctx.rotate(droop * 0.045); ctx.scale(a, a); neatTable(ctx, -122, -80, 244, 164, 1730); ctx.restore(); }
       tag(ctx, '想要的', CLOUD[0] - 6, CLOUD[1] - 168, 46, popIn(t, ev.dream + 0.15, 0.3), { fill: '#E3F2E6', color: GREEN, rot: -0.05, seed: 1740 });
     }
     // 拿到的(放大的那一張)
@@ -467,9 +471,9 @@
 
   // ---------- 2:他忍不住唸了兩句:怎麼會做成這樣?(阿樹皺眉,部屬委屈) ----------
   function scold(ctx, t) {
-    const nag = t >= ev.scold && t < E[2] + 0.1, yak = Math.floor(t * 6.5) % 2, tap = Math.max(U.pulse(t, ev.why + 0.12, 14), U.pulse(t, ev.why + 0.42, 14));
+    const nag = t >= ev.scold && t < E[2] + 0.1, tap = Math.max(U.pulse(t, ev.why + 0.12, 14), U.pulse(t, ev.why + 0.42, 14));
     const shu = { x: HX, y: GROUND, s: SS, pose: 'stand', style: CAST.shuChief, seed: 400, blush: 0.4, blink: blink(t, 0.2),
-      eyes: 'normal', brows: 'determined', mouth: nag ? (yak ? 'open' : 'flat') : 'flat', look: 0.65, lookY: 0.15, headRot: nag ? Math.sin(t * 7) * 0.03 : 0 };
+      eyes: 'normal', brows: 'determined', mouth: nag ? { open: 0.2 + 0.5 * Math.abs(Math.sin(t * 10.5)) * (0.6 + 0.4 * Math.sin(t * 3.1)), wide: 0.35, talking: true } : 'flat', look: 0.65, lookY: 0.15, headRot: nag ? Math.sin(t * 7) * 0.03 : 0 };
     const sp = world(shu, 92, -330);
     shu.handL = toLocal(shu, sp[0] - 40, sp[1] + 30);
     shu.handR = toLocal(shu, sp[0] + 10, sp[1] + 4 + tap * 14); shu.gesture = 'point';
@@ -477,14 +481,14 @@
     const fo = { x: HF, y: GROUND, s: SS, sx: -1, pose: 'stand', style: CAST.staff, seed: 520, blush: 0.7, blink: blink(t, 0.7),
       eyes: 'normal', brows: 'worried', mouth: 'wavy', look: lerp(0.6, 0.15, sulk), lookY: lerp(0, 0.95, sulk), headRot: -0.06 * sulk, headY: 6 * sulk, sweat: 0.8 * sulk,
       handL: [-14, -226], handR: [16, -232] };
-    zoom(ctx, 520, 905, 1.32, () => {
+    zoom(ctx, 500, 905, 1.32, () => {
       officeDay(ctx); staffDesk(ctx, t);
       Ch.person(ctx, fo);
       person(ctx, shu);
       sheet(ctx, sp[0], sp[1], SS, -0.08);
       grip(ctx, shu, world(shu, ...shu.handL), 4);
       anger(ctx, HX + 58, 812, 24, popIn(t, ev.scold, 0.25) * (1 + 0.08 * Math.sin(t * 9)));
-      grumble(ctx, HX - 40, 700, 64, popIn(t, ev.grumble, 0.3), t);
+      nagBubble(ctx, HX - 40, 680, [HX - 2, 800], popIn(t, ev.grumble, 0.3), t);
       if (t >= ev.why) { const a = popIn(t, ev.why, 0.3); ctx.save(); ctx.translate(HX + 92, 706); ctx.rotate(0.12 + Math.sin(t * 6) * 0.04); ctx.scale(a, a); label(ctx, '?', 0, 44, 130, RED, { stroke: '#FFFFFF', strokeW: 24 }); ctx.restore(); }
     }, 880);
     finish(ctx);
@@ -493,10 +497,11 @@
   // ---------- 3:「課長,你沒有說要做成怎樣。」(部屬對嘴) ----------
   function staffTalk(ctx, t) {
     const m = mouthOf('staff', t), up = ease.inOutCubic(clamp((t - ev.lookUp) / 0.35)), f = Math.sin(t * 5.5) * 6;
-    const fo = { x: HF, y: GROUND, s: SS, sx: -1, pose: 'stand', style: CAST.staff, seed: 520, blush: 0.75, blink: blink(t, 0.7),
+    officeDay(ctx); // 與第 3 集的近景一樣:人放大、站在畫面下緣
+    const fo = { x: 560, y: 1880, s: 2.05, sx: -1, pose: 'stand', style: CAST.staff, seed: 520, blush: 0.75, blink: blink(t, 0.7), shadow: false,
       eyes: 'normal', brows: 'worried', mouth: m || 'wavy', look: lerp(0.2, 0.8, up), lookY: lerp(0.85, -0.1, up), headRot: lerp(-0.07, 0.02, up), headY: lerp(6, 0, up), sweat: 0.55,
-      handL: [-22 + f, -232], handR: [24 - f, -240] };
-    zoom(ctx, HF, 885, 2.05, () => { officeDay(ctx); staffDesk(ctx, t); Ch.person(ctx, fo); }, 820);
+      handL: [-20 + f, -266], handR: [24 - f, -274] };
+    Ch.person(ctx, fo);
     finish(ctx);
   }
 
@@ -543,7 +548,7 @@
       }
       ctx.restore();
     }
-    stamp(ctx, '7 個字', 770, 706, 58, -0.1, t, ev.seven);
+    stamp(ctx, '7 個字', 764, 700, 66, -0.1, t, ev.seven);
     rewindFX(ctx, t, 1 - ease.outCubic(clamp((t - ev.memory) / 0.35)));
   }
 
@@ -601,10 +606,13 @@
       // 他怎麼看得到?
       if (t >= ev.see) {
         const b = popIn(t, ev.see, 0.3);
-        ctx.save(); ctx.translate(486, 520); ctx.scale(b, b);
-        G.ellipse(ctx, 0, 0, 66, 66, { fill: '#FFFFFF', lw: 5, seed: 1940 });
-        pawn(ctx, 0, 48, 0.82, PINK, 1941);
-        label(ctx, '?', 62, -26, 96, RED, { stroke: '#FFFFFF', strokeW: 18 });
+        ctx.save(); ctx.translate(474, 512); ctx.scale(b, b);
+        G.ellipse(ctx, 0, 0, 74, 74, { fill: '#F4F8FA', lw: 6, seed: 1940 });
+        ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 70, 0, Math.PI * 2); ctx.clip();
+        Ch.person(ctx, { x: 0, y: 196, s: 0.5, pose: 'stand', style: CAST.staff, seed: 520, eyes: 'normal', brows: 'worried', mouth: 'wavy', look: 0.7, lookY: -0.4, blush: 0.6, blink: 0, shadow: false });
+        ctx.restore();
+        G.ellipse(ctx, 0, 0, 74, 74, { fill: null, lw: 6, seed: 1942 });
+        label(ctx, '?', 82, -24, 104, RED, { stroke: '#FFFFFF', strokeW: 20 });
         ctx.restore();
       }
     }
@@ -630,7 +638,7 @@
       eyes: shown ? 'normal' : 'normal', mouth: 'smile', brows: shown ? 'up' : 'neutral', look: 0.6, lookY: up > 0.5 ? -0.2 : 0.1,
       handR: [64, -232], handL: [-6, -206 + Math.sin(t * 9) * (shown ? 4 : 0)] };
     const cardW = world(shu, ...shu.handR);
-    zoom(ctx, lerp(540, 600, pu), lerp(880, 860, pu), lerp(1, 1.22, pu), () => {
+    zoom(ctx, lerp(540, 600, pu), lerp(900, 870, pu), lerp(1.1, 1.3, pu), () => {
       officeDay(ctx); staffDesk(ctx, t);
       Ch.person(ctx, fo);
       const nb = world(fo, 34, -236); // 她的筆記本
@@ -648,17 +656,18 @@
 
   // ---------- 8:為什麼要做、做到什麼程度、什麼時候要、可以用什麼資源、什麼時候回報 ----------
   const ITEMS = [['目的', '為什麼要做'], ['標準', '做到什麼程度'], ['期限', '什麼時候要'], ['資源', '可以用什麼資源'], ['回報', '什麼時候回報']];
-  const CARD = { x: 258, y: 356, w: 632, h: 812, top: 118, rh: 136 };
+  const CARD = { x: 300, y: 372, w: 590, h: 800, top: 112, rh: 136 };
   function five(ctx, t) {
     officeDay(ctx);
     fillRect(ctx, -200, -200, W + 400, H + 400, 'rgba(255,250,235,0.25)');
     const n = ev.items.filter((x) => t >= x).length, all = t >= ev.ticks[4] + 0.45;
     // 阿樹在左邊,指著現在講到的那一項
-    const px = 158, s = 0.94, row = Math.max(0, n - 1), rowY = CARD.y + CARD.top + row * CARD.rh + CARD.rh / 2;
+    const px = 192, s = 0.92, row = Math.max(0, n - 1), rowY = CARD.y + CARD.top + row * CARD.rh + CARD.rh / 2;
     const hy = rowY + Math.sin(t * 3) * 4;
     const shu = { x: px, y: GROUND, s, pose: 'stand', style: CAST.shuChief, seed: 400, blush: 0.6, blink: blink(t, 0.2),
       eyes: all ? 'happy' : 'normal', mouth: all ? 'grin' : 'smile', brows: 'up', look: all ? 0.2 : 0.8, lookY: all ? 0 : clamp((hy - 900) / 300, -0.6, 0.6) };
-    if (all) shu.gesture = 'thumbsUp'; else { shu.handR = hand(px, GROUND, s, 1, Math.min(CARD.x - 10, 244), clamp(hy, 860, 1120)); shu.gesture = 'point'; }
+    shu.handL = [-70, -186];
+    if (all) shu.gesture = 'thumbsUp'; else { shu.handR = hand(px, GROUND, s, 1, CARD.x - 14, clamp(hy, 860, 1120)); shu.gesture = 'point'; }
     person(ctx, shu);
     // 大卡片:從左下的小卡放大出來
     const a = popIn(t, A[8] - 0.12, 0.35), ox = CARD.x, oy = CARD.y + CARD.h * 0.62;
@@ -666,23 +675,23 @@
     G.rrect(ctx, CARD.x + 8, CARD.y + 10, CARD.w, CARD.h, 16, { fill: 'rgba(30,20,15,0.22)', lw: 0, seed: 1990 });
     G.rrect(ctx, CARD.x, CARD.y, CARD.w, CARD.h, 16, { fill: PAPER, lw: 6, seed: 1991 });
     G.rrect(ctx, CARD.x + 4, CARD.y + 4, CARD.w - 8, CARD.top - 14, 12, { fill: '#F2C230', lw: 0, seed: 1992 });
-    label(ctx, '交辦五件事', CARD.x + CARD.w / 2, CARD.y + 76, 62, INK);
+    label(ctx, '交辦五件事', CARD.x + CARD.w / 2, CARD.y + 74, 62, INK);
     ITEMS.forEach(([lab, desc], k) => {
       const y = CARD.y + CARD.top + k * CARD.rh, cy = y + CARD.rh / 2, ti = ev.items[k], tk = ev.ticks[k];
       if (k) G.line(ctx, [[CARD.x + 18, y], [CARD.x + CARD.w - 18, y]], { color: '#E0D6C0', lw: 3, seed: 2000 + k, amp: 0.3 });
       if (t >= tk) { const g = clamp(1 - (t - tk) / 0.6); fillRect(ctx, CARD.x + 6, y + 4, CARD.w - 12, CARD.rh - 8, `rgba(62,155,95,${0.06 + 0.16 * g})`); }
       if (t < ti) { // 還沒講到:空白的格子
-        G.ellipse(ctx, CARD.x + 56, cy, 30, 30, { fill: '#FFFFFF', stroke: '#C7BDA8', lw: 4, seed: 2010 + k, amp: 0.4 });
-        ctx.save(); ctx.setLineDash([16, 12]); ctx.strokeStyle = '#D3C9B4'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(CARD.x + 110, cy + 22); ctx.lineTo(CARD.x + CARD.w - 40, cy + 22); ctx.stroke(); ctx.restore();
+        G.ellipse(ctx, CARD.x + 48, cy, 29, 29, { fill: '#FFFFFF', stroke: '#C7BDA8', lw: 4, seed: 2010 + k, amp: 0.4 });
+        ctx.save(); ctx.setLineDash([16, 12]); ctx.strokeStyle = '#D3C9B4'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(CARD.x + 96, cy + 22); ctx.lineTo(CARD.x + CARD.w - 34, cy + 22); ctx.stroke(); ctx.restore();
         return;
       }
       const b = popIn(t, ti, 0.3), w = clamp((t - ti - 0.1) / 0.4);
-      ctx.save(); ctx.translate(CARD.x + 108, cy + 34); ctx.scale(b, b); G.text(ctx, lab, 0, 0, { size: 88, fam: CJK, weight: 800, color: INK, boil: 0 }); ctx.restore();
-      ctx.save(); ctx.beginPath(); ctx.rect(CARD.x + 296, y, (CARD.w - 300) * w, CARD.rh); ctx.clip();
-      G.text(ctx, desc, CARD.x + 300, cy + 22, { size: 41, fam: CJK, weight: 800, color: MUTED, boil: 0 });
+      ctx.save(); ctx.translate(CARD.x + 90, cy + 32); ctx.scale(b, b); G.text(ctx, lab, 0, 0, { size: 86, fam: CJK, weight: 800, color: INK, boil: 0 }); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.rect(CARD.x + 268, y, (CARD.w - 270) * w, CARD.rh); ctx.clip();
+      G.text(ctx, desc, CARD.x + 272, cy + 20, { size: 40, fam: CJK, weight: 800, color: MUTED, boil: 0 });
       ctx.restore();
-      if (t >= tk) tickMark(ctx, CARD.x + 56, cy, 30, popIn(t, tk, 0.25), 2020 + k);
-      else G.ellipse(ctx, CARD.x + 56, cy, 30, 30, { fill: '#FFFFFF', stroke: '#C7BDA8', lw: 4, seed: 2010 + k, amp: 0.4 });
+      if (t >= tk) tickMark(ctx, CARD.x + 48, cy, 29, popIn(t, tk, 0.25), 2020 + k);
+      else G.ellipse(ctx, CARD.x + 48, cy, 29, 29, { fill: '#FFFFFF', stroke: '#C7BDA8', lw: 4, seed: 2010 + k, amp: 0.4 });
     });
     ctx.restore();
     finish(ctx);
@@ -693,18 +702,18 @@
     fillRect(ctx, -200, -200, W + 400, H + 400, lin(ctx, 0, 0, 0, 1900, [[0, '#F8E6B8'], [1, '#E8C987']]));
     G.rays(ctx, 540, 900, { n: 14, r0: 120, r1: 1500, color: '#FCEFCB', alpha: 0.9, spin: t * 0.05 });
     const a = popIn(t, ev.card[0] - 0.1, 0.4);
-    ctx.save(); ctx.translate(506, 362); ctx.rotate(-0.012); ctx.scale(a, a);
+    ctx.save(); ctx.translate(498, 362); ctx.rotate(-0.012); ctx.scale(a, a);
     G.tornPaper(ctx, -420, 0, 840, 500, { fill: PAPER, seed: 801 });
     [['交辦不清楚', 136, 114, INK], ['做錯的責任', 284, 114, '#8E6444'], ['在交辦的人', 436, 122, RED]].forEach(([str, y, size, col], k) => {
-      if (t < ev.card[k] - 0.1) return;
-      const b = popIn(t, ev.card[k] - 0.1, 0.3);
+      if (t < ev.card[k]) return;
+      const b = popIn(t, ev.card[k], 0.3);
       ctx.save(); ctx.translate(0, y - size * 0.36); ctx.scale(b, b); label(ctx, str, 0, size * 0.36, size, col); ctx.restore();
     });
     ctx.restore();
     Ch.person(ctx, { x: 205, y: GROUND + 76, s: 0.92, pose: 'stand', style: CAST.masterRest, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', blush: 0.5, seed: 440 });
     // 部屬:這次拿著整齊的表格
     const fo = { x: 520, y: GROUND + 76, s: 0.9, pose: 'stand', style: CAST.staff, eyes: 'happy', mouth: 'grin', blush: 0.7, seed: 520 };
-    const tb = [520, 1010 + Math.sin(t * 3) * 4];
+    const tb = [520, 1164 + Math.sin(t * 3) * 4];
     fo.handL = hand(fo.x, fo.y, fo.s, 1, tb[0] - 70, tb[1] + 40); fo.handR = hand(fo.x, fo.y, fo.s, 1, tb[0] + 70, tb[1] + 40);
     Ch.person(ctx, fo);
     G.rrect(ctx, tb[0] - 92, tb[1] - 64, 184, 128, 8, { fill: PAPER, lw: 4, seed: 2101 });
@@ -722,7 +731,7 @@
   }
 
   const film = Shots.film([
-    { at: 0, draw: handover, cam: Shots.push(1.0, 1.03) },
+    { at: 0, draw: handover, cam: Shots.push(1.06, 1.1) },
     { at: A[1] - 0.15, draw: days, in: 'whip' },
     { at: ev.inShot, draw: handIn, in: 'cut' },
     { at: A[2] - 0.15, draw: scold, in: 'cut' },

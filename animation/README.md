@@ -61,6 +61,8 @@ bash animation/tools/restore-engines.sh
    | 其他男性 | | `zh-TW,pitch=0.94` |
    | 其他女性 | | `zh-TW,pitch=1.15` |
 
+   **從第 8 集起,工地場景改用 `lib/longform-kit.js` 的 `KIT.onSite`**:安全帽有頤帶、穿反光背心,跟長片一致(工安審查指出 `headwear: 'cap'` 看起來像棒球帽、沒有頤帶)。第 1–7 集之後有空再重算成同一套造型。
+
 5. **合成音樂與配音。**
 
    ```bash

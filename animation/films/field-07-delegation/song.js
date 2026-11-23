@@ -47,8 +47,8 @@ fx.addMono(I.pop(1400), ev.why, 0.3);
 // 4:阿樹愣住 → 倒帶回想 → 對話框只有七個字
 fx.addMono(I.thud(70, 0.4), ev.freeze, 0.7);
 fx.addMono(I.tvClick(), ev.freeze + 0.05, 0.4);
-{ const len = ev.memory - ev.rewind + 0.06; fx.addMono(I.noiseSweep(len, 500, 5200, { q: 2.2, shape: (x) => x * x * x }), ev.rewind, 0.42); } // 倒帶:越來越快,一口氣收掉
-for (let k = 0; k < 9; k++) { const u = k / 9, t = ev.rewind + (ev.memory - ev.rewind) * (1 - (1 - u) * (1 - u)); fx.addMono(I.woodTick(1.6 + u), t, 0.08 + 0.08 * u); } // 磁帶捲動
+{ const len = ev.memory - ev.rewind + 0.06; fx.addMono(I.noiseSweep(len, 400, 4800, { q: 0.9, shape: (x) => x * x * x }), ev.rewind, 1.1); fx.addMono(I.noiseSweep(len, 900, 7000, { q: 1.6, shape: (x) => x * x }), ev.rewind, 0.5); } // 倒帶:越來越快,一口氣收掉
+for (let k = 0; k < 12; k++) { const u = k / 12, t = ev.rewind + (ev.memory - ev.rewind) * (1 - (1 - u) * (1 - u)); fx.addMono(I.woodTick(1.5 + u), t, 0.18 + 0.2 * u); } // 磁帶捲動
 fx.addMono(I.tvClick(), ev.memory, 0.28);
 [['A4', 0.25], ['F4', 0.95], ['D4', 1.65], ['E4', 2.35]].forEach(([n, d]) => note(n, ev.memory + d, 0.2, 2.2)); // 回想裡的音盒
 fx.addMono(I.pop(1600), ev.bubble, 0.34); fx.addMono(I.woodTick(1.2), ev.bubble + 0.01, 0.25);
@@ -57,13 +57,13 @@ fx.addMono(I.thwack(), ev.seven, 0.42); fx.addMono(I.thud(90, 0.1), ev.seven, 0.
 // 5–6:休息區,師傅沖茶、倒一杯給阿樹;說話時頭也沒抬,說到最後才抬頭
 whoosh(A[5] - 0.15, 0.5, 0.18); fx.addMono(I.paperFwip(0.9, 35), A[5] - 0.15, 0.3);
 fx.addMono(I.noiseSweep(1.4, 900, 1500, { q: 2.2, pink: true }), ev.pour, 0.09);  // 沖熱水
-fx.addMono(I.noiseSweep(1.0, 1200, 1800, { q: 2.6, pink: true }), ev.cup, 0.07); // 倒茶
-fx.addMono(I.bell(2650, 0.14, 1.5, 2.7), ev.cup + 1.15, 0.16);                 // 杯子放下
+fx.addMono(I.noiseSweep(ev.see - 0.5 - ev.cup, 1200, 1800, { q: 2.6, pink: true }), ev.cup + 0.12, 0.07); // 倒茶
+fx.addMono(I.thud(170, 0.05), ev.see - 0.03, 0.3); fx.addMono(I.bell(1250, 0.12, 1.4, 2.2), ev.see - 0.02, 0.1); // 茶壺放回桌上
 chime(['C5', 'E5', 'G5'], ev.cloud, 0.09, 0.18);
 fx.addMono(I.pop(1300), ev.see, 0.3);
 // 7–8:拿出小卡;五件事一項一項打勾
 whoosh(A[7] - 0.15, 0.5, 0.18); fx.addMono(I.paperFwip(0.9, 37), A[7] - 0.15, 0.3);
-fx.addMono(I.paperFwip(1.3, 38), ev.cardOut, 0.42);
+fx.addMono(I.paperFwip(1.3, 38), ev.cardOut + 0.28, 0.42);
 fx.addMono(I.pop(1500), ev.cardShow, 0.3); chime(['F5', 'A5'], ev.cardShow + 0.05, 0.1, 0.2);
 whoosh(A[8] - 0.12, 0.34, 0.2);
 ev.items.forEach((t, k) => fx.addMono(I.paperFwip(1.2 + k * 0.05, 50 + k), t, 0.26));

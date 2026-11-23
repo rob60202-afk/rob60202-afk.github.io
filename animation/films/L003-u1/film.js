@@ -71,24 +71,61 @@
       const p = quoteFlight(t);
       KIT.table(ctx, t, { x: p.cx - 310, y: p.y, w: 620, title: '報價單', titleSize: 52, rows: KIT.L003.QUOTE, size: 42, rowH: 68, scale: p.s, seed: 610 });
       KIT.stamp(ctx, '得標', 1350, 420, t, ev.stamp, { size: 150, rot: -0.16 });
-      if (t >= ev.stamp) for (let k = 0; k < 6; k++) { const b = popIn(t, ev.stamp + 0.05 + k * 0.04, 0.25) * clamp(1.6 - (t - ev.stamp)); KIT.sparkle(ctx, 1350 + Math.cos(k * 1.05 + 0.4) * 300, 420 + Math.sin(k * 1.05 + 0.4) * 190, 26, b, t * 2 + k); }
+      const SP = [[985, 210], [1678, 250], [990, 540], [1684, 580], [1180, 116], [1500, 656]]; // 紙的外面一圈,不蓋到表格的字
+      if (t >= ev.stamp) SP.forEach(([sx, sy], k) => KIT.sparkle(ctx, sx, sy, 26, popIn(t, ev.stamp + 0.05 + k * 0.04, 0.25) * clamp(1.6 - (t - ev.stamp)), t * 2 + k));
     }
     KIT.warm(ctx, { color: 'rgba(150,190,255,0.12)' });
   }
   // 2. 開工前會勘:陳師傅站在廠房中央仰頭,鏡頭跟著視線往上拉,管線高得離譜
-  const TALL = { top: -1150, pipeY: -880, duct: -560, tray: -190 };
+  // 很高的廠房:比畫面寬(最後鏡頭拉遠時兩邊不會空掉)
+  const COLS = [-660, 150, 960, 1770, 2580];
+  const TALL = { top: -1150, pipeY: -880, duct: -500, tray: 40, x0: -900, x1: W + 900, columns: COLS, hangers: [-250, 560, 1360, 2170],
+    machines: [[-560, 300, 270], [-220, 300, 240], [260, 300, 290], [600, 300, 250], [1060, 320, 280], [1420, 300, 250], [2000, 300, 280], [2340, 300, 240]] };
+  function fabTallExtras(ctx) { // 高處的採光窗、柱上的燈
+    for (let c = 0; c + 1 < COLS.length; c++) for (let x = COLS[c] + 70; x + 110 <= COLS[c + 1] - 50; x += 140) {
+      G.rrect(ctx, x, -330, 110, 110, 4, { fill: '#9FCBE4', lw: 4, seed: 1500 + x });
+      fill(ctx, x + 6, -324, 98, 40, 'rgba(255,255,255,0.35)');
+    }
+    for (const cx of COLS) { G.rrect(ctx, cx + 36, 236, 48, 30, 6, { fill: '#5C6470', lw: 3.5, seed: 1520 + cx }); KIT.glow(ctx, cx + 60, 270, 150, 'rgba(255,250,220,0.45)'); }
+  }
+  // 鏡頭:(cx, cy) 放在畫面中央,放大 z 倍。開始 → 上搖到管線 → 拉遠看整個高度
+  function fabCam(t) {
+    const tu = ease.inOutCubic(clamp((t - ev.tilt[0]) / (ev.tilt[1] - ev.tilt[0]))), pu = ease.inOutCubic(clamp((t - ev.tilt[1] - 0.5) / 1.5));
+    const cy = lerp(lerp(540, -640, tu), -15, pu), z = lerp(1, 0.54, pu);
+    return { cy, z };
+  }
   function hookFab(ctx, t) {
-    const tu = ease.inOutCubic(clamp((t - ev.tilt[0]) / (ev.tilt[1] - ev.tilt[0])));
-    ctx.save(); ctx.translate(0, 1180 * tu);
+    const { cy, z } = fabCam(t);
+    ctx.save(); ctx.translate(960, 540); ctx.scale(z, z); ctx.translate(-960, -cy);
     KIT.bg.fab(ctx, t, TALL);
+    fabTallExtras(ctx);
     const look = t >= ev.lookUp, shuLook = t >= ev.lookUp + 0.45;
     const sw = walkTo(t, A[1] - 0.15, A[1] + 1.75, 360, 1150, 1.0), mw = walkTo(t, A[1] - 0.15, A[1] + 1.95, 80, 820, 1.0);
     const so = { ...sw, y: KIT.L.ground, s: 1.0, style: CAST.shuSite, seed: 400, handR: [70, -212], eyes: shuLook ? 'wide' : 'normal', mouth: shuLook ? 'o' : 'smile', brows: shuLook ? 'up' : 'neutral',
       look: shuLook ? -0.3 : -0.4, lookY: shuLook ? -1 : 0, blink: blink(t, 0.2), blush: 0.5 };
     KIT.person(ctx, so);
     const hp = KIT.world(so, 72, -200); heldPaper(ctx, hp[0] + 6, hp[1] - 20, 0.9, 0.1, 32);
-    KIT.person(ctx, { ...mw, y: KIT.L.ground, s: 1.0, style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: 'flat', brows: look ? 'up' : 'neutral',
-      look: look ? 0.05 : 0.3, lookY: look ? -1 : 0, headY: look ? -4 : 0, blink: blink(t, 0.6) });
+    const mo = { ...mw, y: KIT.L.ground, s: 1.0, style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: 'flat', brows: look ? 'up' : 'neutral',
+      look: look ? 0.05 : 0.3, lookY: look ? -1 : 0, headY: look ? -4 : 0, blink: blink(t, 0.6) };
+    KIT.person(ctx, mo);
+    // 視線:從師傅的眼睛一路往上,鏡頭跟著它走,最後停在管線上
+    if (t >= ev.lookUp + 0.1) {
+      const hp = KIT.headPos(mo), y0 = hp[1] - 150, y1 = TALL.pipeY + 190, u = ease.inOutCubic(clamp((t - ev.lookUp - 0.1) / (ev.tilt[1] - ev.lookUp - 0.1)));
+      const yt = lerp(y0, y1, u), xs = hp[0] + 4;
+      ctx.save(); ctx.setLineDash([22, 16]); ctx.lineDashOffset = t * 80; stroke(ctx, [[xs, y0], [xs, yt]], 'rgba(200,69,47,0.85)', 7); ctx.restore();
+      for (let y = y0 - 60; y > yt + 40; y -= 220) stroke(ctx, [[xs - 18, y + 14], [xs, y - 4], [xs + 18, y + 14]], 'rgba(200,69,47,0.85)', 7);
+      const ring = clamp((t - ev.tilt[1] + 0.25) / 0.4);
+      if (ring > 0) { ctx.save(); ctx.globalAlpha *= ring; ctx.setLineDash([20, 14]); ctx.strokeStyle = C.red; ctx.lineWidth = 8 / z; ctx.beginPath(); ctx.ellipse(xs, TALL.pipeY + 75, 300 * (0.8 + 0.2 * ring), 125, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      // 拉遠之後:右邊一支從地面到管線的高度箭頭(不標數字,第 2 章才量)
+      const ha = clamp((t - ev.tilt[1] - 1.6) / 0.5);
+      if (ha > 0) {
+        const X = 1560, yA = KIT.L.ground - 6, yB = TALL.pipeY + 150, yy = lerp(yA, yB, ease.outCubic(ha));
+        stroke(ctx, [[X, yA], [X, yy]], C.red, 12);
+        stroke(ctx, [[X - 34, yy + 40], [X, yy], [X + 34, yy + 40]], C.red, 12);
+        stroke(ctx, [[X - 34, yA - 40], [X, yA], [X + 34, yA - 40]], C.red, 12);
+        if (ha >= 1) { const b = popIn(t, ev.tilt[1] + 2.1, 0.3); ctx.save(); ctx.translate(X + 40, (yA + yB) / 2); ctx.scale(b, b); label(ctx, '?', 70, 60, 200, C.red, { stroke: '#FFFFFF', strokeW: 30, align: 'left' }); ctx.restore(); }
+      }
+    }
     ctx.restore();
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.10)', floor: 0.2 });
   }
@@ -112,9 +149,10 @@
     for (let k = 0; k < 4; k++) fill(ctx, -100, 40 + k * 56, W + 200, 30, `rgba(255,255,255,${0.18 - k * 0.03})`); // 模糊的管線
     const tremble = t >= ev.shatter ? Math.sin(t * 38) * 4 * clamp(1 - (t - ev.shatter) / 1.2) : 0;
     ctx.save(); ctx.translate(tremble, 0);
-    // 手掌在紙後面
-    for (const [hx, ax] of [[QX + 40, 330], [QX + 760, 1590]]) { G.limb(ctx, [[ax, 1180], [hx, 720]], { color: C.skin, lw: 74, seed: 40 + ax }); G.ellipse(ctx, hx, 676, 58, 50, { fill: C.skin, lw: 4.5, seed: 44 + ax }); }
-    const T = KIT.table(ctx, t, { x: QX, y: QY, w: 800, title: '報價單', titleSize: 56, size: 50, rowH: 84, seed: 610,
+    // 手掌在紙後面(紙底下多留一段空白,大拇指壓在那裡,不蓋到字)
+    const BOT = QY + 636;
+    for (const [hx, ax] of [[QX + 40, 330], [QX + 760, 1590]]) { G.limb(ctx, [[ax, 1200], [hx, BOT + 40]], { color: C.skin, lw: 74, seed: 40 + ax }); G.ellipse(ctx, hx, BOT, 58, 50, { fill: C.skin, lw: 4.5, seed: 44 + ax }); }
+    const T = KIT.table(ctx, t, { x: QX, y: QY, w: 800, title: '報價單', titleSize: 56, size: 50, rowH: 84, seed: 610, foot: 70,
       rows: withTimes(KIT.L003.QUOTE, { fee: { cells: ['管理費與利潤', ''], hi: ev.insert + 0.2, hiColor: '#FFE9A0' } }) });
     const r = T.rows[2], vx = QX + r.cx[1], vy = QY + r.base;
     KIT.shatter(ctx, '20,000', vx, vy, t, ev.shatter, { size: 50, crack: ev.shatter - ev.crack, seed: 7 });
@@ -125,7 +163,7 @@
       ctx.save(); ctx.globalAlpha *= a; label(ctx, '?', vx - 112, vy + 2, 60, C.red); ctx.restore();
     }
     // 大拇指在紙前面
-    for (const hx of [QX + 40, QX + 760]) G.ellipse(ctx, hx + (hx < 960 ? 22 : -22), 646, 22, 34, { fill: C.skin, lw: 4, seed: 48 + hx });
+    for (const hx of [QX + 40, QX + 760]) G.ellipse(ctx, hx + (hx < 960 ? 24 : -24), BOT - 32, 22, 34, { fill: C.skin, lw: 4, seed: 48 + hx });
     ctx.restore();
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.08)' });
   }
@@ -165,7 +203,7 @@
     KIT.bg.office(ctx, t, { ...DAY, clock: [1250, 186, 62, 16.0] });
     const tb = when(4, '老闆'), tossU = clamp((t - (ev.toss - 0.32)) / 0.32), back = clamp((t - ev.toss - 0.15) / 0.45);
     const fly = clamp((t - ev.toss) / 0.55), landed = t >= ev.toss + 0.55;
-    const bw = walkTo(t, tb - 1.1, tb + 0.15, 2060, 1490, 1.1);
+    const bw = walkTo(t, tb - 1.3, tb + 0.15, 2280, 1490, 1.1);
     KIT.officeChair(ctx, 700, 780, 1.35);
     KIT.person(ctx, { x: 700, y: 780, s: 1.35, pose: 'sit', style: CAST.shu, seed: 400, gesture: t < tb - 0.2 ? 'typing' : null,
       eyes: landed ? 'wide' : 'normal', mouth: landed ? 'o' : 'smile', brows: landed ? 'up' : 'neutral', look: t > tb - 0.4 && !landed ? 0.85 : landed ? 0 : 0.2, lookY: landed ? 0.8 : 0.1, blink: blink(t, 0.1), blush: 0.6, shadow: false });
@@ -216,7 +254,7 @@
     G.rrect(ctx, -250, -60, 500, 120, 6, { fill: '#FFFFFF', lw: 5, seed: 1030 });
     stroke(ctx, [[-250, -60], [-250, 60]], C.ink, 5);
     if (glow > 0) { ctx.save(); ctx.globalAlpha *= glow; ctx.fillStyle = 'rgba(255,214,80,0.55)'; ctx.fillRect(90, -40, 140, 80); ctx.restore(); }
-    label(ctx, '2" 不鏽鋼管・氬焊', 0, 18, 50, sa > 0 ? C.blue : '#9AA8B6');
+    label(ctx, '2" 不鏽鋼管・氬焊', 0, 18, 50, sa > 0 ? C.blue : '#66727F');
     ctx.restore();
     KIT.warm(ctx, { color: 'rgba(255,255,255,0.06)', floor: 0.18 });
   }
@@ -231,18 +269,21 @@
     if (!seated) {
       const thump = clamp(1 - Math.abs(t - ev.chest - 0.1) / 0.3), spark = t >= ev.sparkle;
       KIT.officeChair(ctx, 760, 800, 1.35);
-      const o = { x: 760, y: 1010, s: 1.42, pose: 'stand', style: CAST.shu, seed: 400, gesture: spark ? 'thumbsUp' : null, eyes: spark ? 'wide' : t >= ev.chest ? 'happy' : 'wide', mouth: m || 'grin', brows: 'up', look: 0.2, blink: spark ? 0 : blink(t, 0.1), blush: 0.75 };
-      if (thump > 0 && !spark) o.handR = [lerp(92, 22, thump), lerp(-180, -250, thump)];
+      // 拍胸脯:拳頭拍兩下,之後就一直放在胸口(另一手叉腰),眼睛發亮
+      const onChest = t >= ev.chest + 0.1;
+      const o = { x: 760, y: 1010, s: 1.42, pose: 'stand', style: CAST.shu, seed: 400, eyes: spark ? 'wide' : t >= ev.chest ? 'happy' : 'wide', mouth: m || 'grin', brows: 'up', look: 0.2, blink: spark ? 0 : blink(t, 0.1), blush: 0.75 };
+      if (onChest) { o.handR = [22, -250 + Math.max(0, Math.sin((t - ev.chest - 0.1) * 18)) * 10 * clamp(1 - (t - ev.chest - 0.1) / 0.5)]; o.handL = [-60, -184]; }
+      else if (thump > 0) o.handR = [lerp(92, 22, thump), lerp(-180, -250, thump)];
       KIT.person(ctx, o);
-      if (thump > 0.6) KIT.burst(ctx, 760 + 40, 1010 - 1.42 * 250, 60, 90, thump, 6, C.ink, 5, 0.9);
+      if (thump > 0.6 && t < ev.chest + 0.45) { const f = KIT.world(o, o.handR[0], o.handR[1]); KIT.burst(ctx, f[0], f[1], 46, 78, (thump - 0.6) / 0.4, 8, C.orange, 7); }
       if (spark) { const hp = KIT.headPos(o); [[-37, -8], [37, -8]].forEach(([dx, dy], j) => KIT.sparkle(ctx, hp[0] + dx * 1.42, hp[1] + dy * 1.42, 22, popIn(t, ev.sparkle + j * 0.06, 0.25), t * 3 + j, '#FFF7C0')); for (let j = 0; j < 4; j++) KIT.sparkle(ctx, hp[0] + [-170, 170, -140, 150][j], hp[1] + [-90, -110, 60, 40][j], 20, popIn(t, ev.sparkle + 0.1 + j * 0.07, 0.25), t * 2 + j); }
     } else { // 時間快轉:坐下來一直打字
       KIT.officeChair(ctx, 760, 800, 1.35, { night: k > 0.5 });
       KIT.person(ctx, { x: 760, y: 800, s: 1.35, pose: 'sit', style: CAST.shu, seed: 400, gesture: 'typing', eyes: 'normal', mouth: 'flat', brows: 'determined', look: 0.3, lookY: 0.3, blush: 0.6, shadow: false });
     }
-    KIT.desk(ctx, 380, 840, 800, { night: k > 0.5 });
+    KIT.desk(ctx, 380, 840, 900, { night: k > 0.5 });
     KIT.keyboard(ctx, 760, 836, 1);
-    KIT.monitor(ctx, 1040, 826, 1, { glow: k });
+    KIT.monitor(ctx, 1150, 826, 1, { glow: k });
     planMini(ctx, 560, 828, 0.85, -0.05, 0.42, 71);
     // 老闆抱胸看著(時間快轉時走掉)
     const gone = clamp((t - ev.clock[0]) / 0.4);
@@ -256,14 +297,15 @@
     const onPhone = t >= ev.phone && t < ev.close + 0.15, total = t >= ev.total;
     KIT.officeChair(ctx, 400, 790, 1.3, { night: true });
     KIT.person(ctx, { x: 400, y: 790, s: 1.3, pose: 'sit', style: CAST.shu, seed: 400, gesture: onPhone ? 'phone' : 'typing',
-      eyes: total ? 'happy' : t >= ev.hl[2] && onPhone ? 'wide' : 'normal', mouth: total ? 'grin' : t >= ev.hl[2] && onPhone ? 'o' : 'smile', brows: total ? 'up' : 'determined',
+      eyes: total ? 'happy' : t >= ev.hl[2] && onPhone ? 'wide' : 'normal', mouth: total ? 'grin' : t >= ev.hl[2] && onPhone ? 'o' : 'smile', brows: total || (t >= ev.hl[2] && onPhone) ? 'up' : 'determined',
       look: onPhone ? 0.2 : 0.8, lookY: onPhone ? 0.8 : 0.1, blink: blink(t, 0.1), blush: 0.6, shadow: false });
     KIT.desk(ctx, 70, 820, 820, { night: true });
     KIT.lamp(ctx, 150, 808, 0.9);
     KIT.keyboard(ctx, 400, 816, 0.95);
     KIT.monitor(ctx, 680, 808, 0.95, { glow: 0.9 });
-    // 【表 1】
-    KIT.table(ctx, t, { ...TB, at: ev.table, title: KIT.L003.TABLE1_TITLE, head: ['項目', '金額'], grow: true, seed: 700,
+    // 【表 1】(全螢幕字卡蓋上來的時候先淡掉,字卡縮成角標時再回來,才不會從字卡後面露出半截數字)
+    const behind = clamp((t - ev.card) / 0.3) * (1 - clamp((t - ev.shrink - 0.15) / 0.45));
+    KIT.table(ctx, t, { ...TB, at: ev.table, title: KIT.L003.TABLE1_TITLE, head: ['項目', '金額'], grow: true, seed: 700, alpha: 1 - behind,
       rows: withTimes(KIT.L003.TABLE1, {
         mat: { at: ev.mat, hi: [ev.mat, ev.wage] }, wage: { at: ev.wage, hi: [ev.wage, ev.sub] }, sub: { at: ev.sub, hi: [ev.sub, ev.fee] },
         fee: { at: ev.fee, hi: [ev.fee, ev.net], cells: ['管理費與利潤 10%', (tt) => (tt >= ev.feeV ? '20,000' : '')] },
@@ -286,7 +328,7 @@
     if (t >= ev.phone && t < ev.close + 0.25) {
       const a = popIn(t, ev.phone + 0.05, 0.3), close = ease.inCubic(clamp((t - ev.close) / 0.22));
       ctx.save(); ctx.translate(800, 500); ctx.scale(a, a * (1 - close)); ctx.translate(-800, -500);
-      KIT.phone(ctx, 800, 500, 430, 740, (c, w, h) => KIT.chat(c, w, h, t, { title: '班長', msgs: [{ ...KIT.L003.SHU_ASK, at: ev.phone + 0.5 }, { ...KIT.L003.CREW_QUOTE, at: ev.reply }], hi: { '1.1': ev.hl[0], '1.2': ev.hl[1], '1.3': ev.hl[2] } }));
+      KIT.phone(ctx, 800, 500, 430, 740, (c, w, h) => KIT.chat(c, w, h, t, { title: '班長', msgs: [{ ...KIT.L003.SHU_ASK, at: ev.phone + 0.5 }, { ...KIT.L003.CREW_QUOTE, at: ev.reply }], hi: { '1.1': [ev.hl[0], ev.hl[1]], '1.2': [ev.hl[1], ev.hl[2]], '1.3': ev.hl[2] } }));
       ctx.restore();
     }
     KIT.warm(ctx, { color: 'rgba(150,190,255,0.12)' });
@@ -306,7 +348,7 @@
     KIT.monitor(ctx, 920, 826, 1, { glow: 1 });
     // 想法泡泡裡的清單:念到哪一項就勾哪一項
     const ckA = ev.ticks[0] - 0.25;
-    KIT.bubble(ctx, t, { x: 1390, y: 470, w: 560, h: 470, think: true, tail: [770, 360], t0: ckA, content: (c) => {
+    KIT.bubble(ctx, t, { x: 1390, y: 470, w: 560, h: 470, think: true, tail: [770, 360], t0: ckA, t1: ev.send - 0.05, content: (c) => {
       KIT.checklist(c, t, { x: 70, y: 20, w: 420, card: false, size: 60, rowH: 100, box: 52, items: ['材料', '工資', '利潤', '稅'].map((s, k) => ({ text: s, check: ev.ticks[k] })) });
       if (t >= ev.allDone) { const b = popIn(t, ev.allDone, 0.3); c.save(); c.translate(440, 400); c.scale(b, b); c.rotate(-0.15); label(c, 'OK', 0, 20, 64, C.green, { stroke: '#FFFFFF', strokeW: 12, fam: KIT.NUM }); c.restore(); }
     } });
@@ -331,11 +373,13 @@
     KIT.bg.clientOffice(ctx, t);
     const m = mouth('client', t), deal = mode === 'deal';
     const open = ease.outBack(clamp((t - ev.spread) / 0.35));
-    const co = { x: 640, y: 860, s: 1.25, pose: 'stand', style: CAST.client, seed: 480, mouth: m || 'smile', eyes: deal && t > ev.deal + 0.5 ? 'happy' : 'normal', brows: 'neutral', look: 0.75, blink: blink(t, 0.45) };
-    if (deal) co.gesture = t >= ev.deal + 0.15 ? 'thumbsUp' : null;
+    const co = { x: 640, y: 860, s: 1.25, pose: 'stand', style: CAST.client, seed: 480, mouth: m || 'smile', eyes: deal && t > ev.deal + 0.5 ? 'happy' : 'normal', brows: m ? 'up' : 'neutral', look: 0.75, blink: blink(t, 0.45) };
+    const give = deal ? ease.outCubic(clamp((t - ev.deal - 0.1) / 0.45)) : 0; // 就給你們做:把阿樹那份報價單遞過去
+    if (deal) co.handR = [lerp(46, 205, give), lerp(-202, -262, give)];
     else { co.handL = [-46, -322 + 120]; co.handR = [46, -322 + 120]; }
     KIT.person(ctx, co);
     if (!deal) fanSheets(ctx, 640, 700, open, 1200);
+    else { const p = KIT.world(co, co.handR[0], co.handR[1]); ctx.save(); ctx.translate(p[0] + 40, p[1] - 70); ctx.rotate(0.12 - 0.1 * give); G.rrect(ctx, -66, -88, 132, 176, 6, { fill: C.paper, lw: 4, seed: 1220 }); for (let j = 0; j < 5; j++) G.line(ctx, [[-46, -60 + j * 26], [j === 4 ? 0 : 46, -60 + j * 26]], { color: '#B8AE9A', lw: 4, seed: 1221 + j, amp: 0.3 }); ctx.restore(); G.ellipse(ctx, p[0], p[1], 20, 20, { fill: CAST.client.skin, lw: 4, seed: 1226 }); }
     KIT.desk(ctx, 260, 760, 760, { color: '#E9E4D8', seed: 1210 });
     const happy = deal && t > ev.deal + 0.3;
     KIT.person(ctx, { x: 1400, y: 870, s: 1.2, sx: -1, pose: 'stand', style: CAST.shu, seed: 400, eyes: happy ? 'happy' : 'normal', mouth: happy ? 'grin' : 'smile', brows: 'up', look: 0.75, blink: blink(t, 0.1), blush: happy ? 0.9 : 0.6, gesture: happy && t > ev.deal + 0.8 ? 'cheer' : null });
@@ -343,13 +387,6 @@
   }
   // 俯看桌面:三份報價單。阿樹那份只有一頁,另外兩份都多一頁密密麻麻的備註
   function sheetTop(ctx, x, y, w, h, seed, { total = false, notes = false } = {}) {
-    if (notes) { // 第二頁:備註
-      ctx.save(); ctx.translate(x + 56, y + 70); ctx.rotate(0.05);
-      G.rrect(ctx, 0, 0, w, h, 6, { fill: '#FBF8EE', lw: 4, seed: seed + 50 });
-      label(ctx, '備註', 70, 66, 42, C.ink);
-      for (let j = 0; j < 13; j++) G.line(ctx, [[30, 108 + j * 31], [w - 30 - (j % 4) * 26, 108 + j * 31]], { color: '#8E8576', lw: 4, seed: seed + 60 + j, amp: 0.5 });
-      ctx.restore();
-    }
     ctx.save(); ctx.translate(x, y); ctx.rotate(notes ? -0.02 : 0.01);
     G.rrect(ctx, 0, 0, w, h, 6, { fill: '#FFFDF4', lw: 4, seed });
     label(ctx, '報價單', w / 2, 70, 46, C.ink);
@@ -358,36 +395,50 @@
     if (total) { stroke(ctx, [[30, h - 96], [w - 30, h - 96]], C.ink, 3); G.text(ctx, '含稅', 34, h - 36, { size: 40, fam: KIT.CJK, weight: 800, color: C.ink, boil: 0 }); G.text(ctx, '231,000', w - 30, h - 36, { size: 46, fam: KIT.NUM, weight: 800, color: C.red, align: 'right', boil: 0 }); }
     else { stroke(ctx, [[30, h - 96], [w - 30, h - 96]], C.ink, 3); G.line(ctx, [[34, h - 50], [120, h - 50]], { color: '#B8AE9A', lw: 6, seed: seed + 30, amp: 0.3 }); G.line(ctx, [[w - 170, h - 50], [w - 34, h - 50]], { color: '#B8AE9A', lw: 6, seed: seed + 31, amp: 0.3 }); }
     ctx.restore();
+    if (notes) { // 最後多一頁:寫得密密麻麻的備註(疊在第一頁右下,看得到)
+      ctx.save(); ctx.translate(x + w * 0.52, y + 96); ctx.rotate(0.06);
+      G.rrect(ctx, 0, 0, w, h, 6, { fill: '#FBF7EA', lw: 4, seed: seed + 50 });
+      label(ctx, '備註', w / 2, 64, 44, C.ink);
+      stroke(ctx, [[30, 90], [w - 30, 90]], C.ink, 3);
+      for (let j = 0; j < 14; j++) G.line(ctx, [[30, 122 + j * 28], [w - 30 - (j % 4) * 28, 122 + j * 28]], { color: '#7E7566', lw: 4.5, seed: seed + 60 + j, amp: 0.6 });
+      ctx.restore();
+    }
   }
   function topDown(ctx, t) {
     fill(ctx, -100, -100, W + 200, H + 200, lin(ctx, 0, 0, W, H, [[0, '#D9C3A0'], [1, '#C7AC84']]));
     for (let k = 0; k < 14; k++) G.line(ctx, [[-40, 40 + k * 80 + Math.sin(k) * 10], [W + 40, 60 + k * 80 - Math.cos(k) * 12]], { color: 'rgba(150,110,70,0.25)', lw: 4, seed: 1300 + k, amp: 3 }); // 木紋
-    sheetTop(ctx, 110, 130, 420, 600, 1310, { notes: true });
-    sheetTop(ctx, 1290, 130, 420, 600, 1330, { notes: true });
-    sheetTop(ctx, 750, 160, 420, 600, 1350, { total: true });
-    // 阿樹那份:黃色便利貼
-    ctx.save(); ctx.translate(1130, 190); ctx.rotate(0.12); G.rrect(ctx, -70, -40, 140, 80, 4, { fill: '#FFE27A', lw: 3.5, seed: 1360 }); label(ctx, '阿樹', 0, 14, 40, C.ink); ctx.restore();
-    // 承辦的手點在阿樹那份上
-    const tap = Math.abs(Math.sin(clamp((t - ev.tap) / 0.28) * Math.PI)) * 18 * (t >= ev.tap && t < ev.tap + 0.56 ? 1 : 0), hx = 1050, hy = 520 - tap;
-    G.limb(ctx, [[1230, -60], [1150, 260], [hx + 20, hy - 70]], { color: CAST.client.robe, lw: 70, seed: 1370 });
-    G.ellipse(ctx, hx + 10, hy - 30, 44, 40, { fill: CAST.client.skin, lw: 4.5, seed: 1371 });
-    G.limb(ctx, [[hx + 4, hy - 20], [hx - 14, hy + 30]], { color: CAST.client.skin, lw: 18, outline: 4, seed: 1372 });
-    if (t >= ev.tap) { const g = clamp((t - ev.tap) / 0.3); ctx.save(); ctx.globalAlpha *= g * (0.65 + 0.35 * Math.sin(t * 6)); ctx.strokeStyle = '#F0A800'; ctx.lineWidth = 8; ctx.beginPath(); ctx.roundRect(762, 650, 396, 98, 18); ctx.stroke(); ctx.restore(); }
+    sheetTop(ctx, 60, 150, 360, 520, 1310, { notes: true });
+    sheetTop(ctx, 1250, 150, 360, 520, 1330, { notes: true });
+    sheetTop(ctx, 770, 170, 380, 560, 1350, { total: true });
+    // 阿樹那份:黃色便利貼(左上角,手不會蓋到)
+    ctx.save(); ctx.translate(830, 160); ctx.rotate(-0.1); G.rrect(ctx, -70, -40, 140, 80, 4, { fill: '#FFE27A', lw: 3.5, seed: 1360 }); label(ctx, '阿樹', 0, 14, 40, C.ink); ctx.restore();
+    // 承辦的手點在阿樹那份的總價上
+    const tap = Math.abs(Math.sin(clamp((t - ev.tap) / 0.28) * Math.PI)) * 18 * (t >= ev.tap && t < ev.tap + 0.56 ? 1 : 0), hx = 1100, hy = 640 - tap;
+    G.limb(ctx, [[1330, -60], [1240, 300], [hx + 30, hy - 80]], { color: CAST.client.robe, lw: 70, seed: 1370 });
+    G.ellipse(ctx, hx + 14, hy - 36, 44, 40, { fill: CAST.client.skin, lw: 4.5, seed: 1371 });
+    G.limb(ctx, [[hx + 6, hy - 24], [hx - 12, hy + 24]], { color: CAST.client.skin, lw: 18, outline: 4, seed: 1372 });
+    if (t >= ev.tap) { const g = clamp((t - ev.tap) / 0.3); ctx.save(); ctx.globalAlpha *= g * (0.65 + 0.35 * Math.sin(t * 6)); ctx.strokeStyle = '#F0A800'; ctx.lineWidth = 8; ctx.beginPath(); ctx.roundRect(780, 644, 376, 98, 18); ctx.stroke(); ctx.restore(); }
     KIT.warm(ctx, { color: 'rgba(255,230,190,0.10)' });
   }
   // 13. 「價錢也最漂亮」幾個字在阿樹頭上繞圈發光,阿樹頭上冒出小皇冠
-  const RING = '價錢也最漂亮';
+  // 「價錢也最漂亮」六個字排在頭頂一圈光環的前半圈,整句一起繞一圈:
+  // 旁白念「價錢最漂亮」時剛好在正前方(讀得懂),繞到頭後面變淡,小皇冠冒出來時又轉回正前方。其餘的格子是小光點。
+  const RING = '價錢也最漂亮', SLOTS = 14;
   function crownShot(ctx, t) {
     KIT.bg.clientOffice(ctx, t);
     fill(ctx, -100, -100, W + 200, H + 200, 'rgba(255,214,120,0.30)');
     G.rays(ctx, 960, 470, { n: 22, r0: 220, r1: 1500, color: '#FFF2C8', alpha: 0.6, spin: t * 0.06 });
     const o = { x: 960, y: 1390, s: 2.0, pose: 'stand', style: CAST.shu, seed: 400, eyes: 'happy', mouth: 'grin', brows: 'up', blush: 1, look: 0, shadow: false };
-    const ra = clamp((t - ev.orbit - 0.2) / 0.5), th0 = -(t - ev.orbit) * 0.9;
-    const ringChars = [...RING].map((ch, k) => { const th = th0 - k * (Math.PI * 2 / RING.length); return { ch, x: 960 + Math.cos(th) * 380, y: 262 + Math.sin(th) * 58, front: Math.sin(th) > 0, d: Math.sin(th) }; });
-    const drawRing = (front) => ringChars.filter((c) => c.front === front).forEach((c) => {
-      ctx.save(); ctx.globalAlpha *= ra * (front ? 1 : 0.55); ctx.shadowColor = 'rgba(255,200,60,0.9)'; ctx.shadowBlur = 22;
-      ctx.translate(c.x, c.y); const k = 1 + 0.18 * c.d; ctx.scale(k, k);
-      label(ctx, c.ch, 0, 24, 66, '#C8860A', { stroke: '#FFF6D6', strokeW: 12 });
+    const ra = clamp((t - ev.orbit - 0.1) / 0.4), step = Math.PI * 2 / SLOTS;
+    const tA = ev.orbit + 0.7, tB = ev.crown + 0.3, spin = ease.inOutCubic(clamp((t - tA) / (tB - tA))) * Math.PI * 2; // 正前方 → 繞一圈 → 正前方
+    const items = Array.from({ length: SLOTS }, (_, k) => {
+      const th = Math.PI / 2 + (2.5 - k) * step + spin, d = Math.sin(th);
+      return { ch: k < RING.length ? RING[k] : null, x: 960 + Math.cos(th) * 430, y: 236 + d * 62, front: d > 0, d, k };
+    });
+    const drawRing = (front) => items.filter((c) => c.front === front).forEach((c) => {
+      ctx.save(); ctx.globalAlpha *= ra * (front ? 1 : 0.4) * clamp(0.2 + Math.abs(c.d) * 1.6); // 轉到兩側時字擠在一起:淡一點、小一點
+      if (c.ch) { ctx.shadowColor = 'rgba(255,200,60,0.9)'; ctx.shadowBlur = 22; ctx.translate(c.x, c.y); const k = 0.72 + 0.34 * Math.abs(c.d); ctx.scale(k, k); label(ctx, c.ch, 0, 22, 64, '#C8860A', { stroke: '#FFF6D6', strokeW: 12 }); }
+      else KIT.sparkle(ctx, c.x, c.y, 14 + 4 * c.d, 1, t * 2 + c.k, '#FFF4B0');
       ctx.restore();
     });
     drawRing(false);
@@ -407,7 +458,7 @@
     { at: ev.ch1, draw: (ctx, t) => KIT.chapterCard(ctx, t, ev.ch1, { n: 1, title: '一個晚上的報價單' }), in: 'cut' },
     { at: ev.ch1 + S.CHAPTER, draw: office5, in: 'cut', cam: Shots.push(1.0, 1.035) },
     { at: ev.plan, draw: planShot, in: 'zoom', cam: Shots.push(1.0, 1.03) },
-    { at: A[5] - 0.15, draw: ready, in: 'cut' },
+    { at: A[5] - 0.15, draw: ready, in: 'cut', cam: (s) => ({ zoom: lerp(1.18, 1.0, ease.inOutCubic(clamp((s.t - ev.clock[0]) / 0.9))) }) }, // 中景;時間快轉時拉回全景
     { at: A[6] - 0.15, draw: nightDesk, in: 'cut' },
     { at: A[10] - 0.15, draw: sendShot, in: 'cut', cam: Shots.push(1.0, 1.03) },
     { at: A[11] - 0.15, draw: (ctx, t) => client(ctx, t, 'fan'), in: 'paper' },

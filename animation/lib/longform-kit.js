@@ -22,8 +22,11 @@
  * KIT.onSite(style, helmetColor, vest)  任何造型 → 工地版(安全帽 + 頤帶 + 背心)
  * KIT.person(ctx, o)            = Ch.person + style.headwear 'helmet'(含頤帶)+ style.vest 背心
  *                                 + o.harness {clip:[x,y]} 全身式安全帶,掛鉤扣在頭上方的錨點
+ *                                 (kit 載入時會把 Ch.headwear 包一層,多認得 'helmet';其他帽子照舊)
  * KIT.hand(px, py, s, sx, wx, wy)  畫面座標 → 角色 handL/handR 的目標(角色自己的單位)
+ * KIT.world(o, lx, ly)          角色身上的點(角色自己的單位)→ 畫面座標
  * KIT.headPos(o)                角色頭中心的畫面座標(放皇冠、對話框、字卡要避開臉時用)
+ * KIT.harness(ctx, o) · KIT.lanyard(ctx, o, clip) · KIT.snapHook(ctx, x, y, rot, s)  安全帶各部分(KIT.person 會自己畫)
  *
  * ── 共用小工具 ────────────────────────────────────────────────────────────────────────────────
  * KIT.lin / KIT.rad(ctx, …, stops)    線性 / 放射漸層      KIT.fill(ctx, x, y, w, h, style)
@@ -33,22 +36,25 @@
  * KIT.popIn(t, t0, d) 彈出(0 → 超過一點 → 1)· KIT.fadeIn(t, t0, d) · KIT.ease = U.ease
  * KIT.blink(t, seed) 眨眼 · KIT.mouth(VO, t, who, from) 對嘴(VO = out/voice.json;沒在講話回傳 null)
  * KIT.warm(ctx, o)               每個鏡頭最後一筆:左上暖光 + 底部壓暗(字幕更清楚)
- * KIT.stroke(ctx, pts, color, lw) 乾淨的筆畫 · KIT.tick(ctx, x, y, r, a) 綠底白勾 · KIT.cross(…) 紅叉
- * KIT.sparkle(ctx, x, y, r, a, rot) 閃光 · KIT.burst(ctx, x, y, r0, r1, a, n, color) 放射短線
+ * KIT.stroke(ctx, pts, color, lw) 乾淨的筆畫 · KIT.partial(pts, u) 折線只取前面 u · KIT.tick(ctx, x, y, r, a) 綠底白勾 · KIT.cross(…) 紅叉
+ * KIT.sparkle(ctx, x, y, r, a, rot) 閃光 · KIT.burst(ctx, x, y, r0, r1, a, n, color) 放射短線 · KIT.glow(ctx, x, y, r, color) 一團光
+ * KIT.cached(ctx, key, drawFn) 靜態圖層快取 · KIT.floorLines(ctx, col, seed, fy) 地板透視線 · KIT.pipeRun(ctx, x0, x1, y, th, color, seed) 一段管
  *
  * ── 背景(KIT.bg.*,畫滿整個畫面;靜態部分快取)────────────────────────────────────────────────
- * fab(ctx, t, {floor, top, pipeY, machines, cache})  廠房:H 型鋼柱、屋頂梁、頂上一排管線與吊架/支架、
- *                                                  機台一列、環氧地坪與黃色走道線。top < 0 = 很高的廠房(上搖用)
+ * fab(ctx, t, {floor, top, pipeY, machines, columns, hangers, duct, tray, x0, x1, cache})
+ *                                                  廠房:H 型鋼柱、屋頂梁、頂上一排管線與吊架(吊桿 + 槽鋼橫擔)、柱上托架、
+ *                                                  機台一列、環氧地坪與黃色走道線。top < 0 = 很高的廠房(上搖用);
+ *                                                  x0/x1 = 畫多寬(鏡頭拉遠時);duct/tray = 牆上中段的風管、電纜架
  * office(ctx, t, {night, clock, window})           小工程行辦公室(白天 / 晚上:窗外月亮、檯燈暖光)
  * clientOffice(ctx, t)                             甲方辦公室:冷色、大窗城市、玻璃隔間、植物
  * restArea(ctx, t)                                 休息區:護牆板、窗、「休息區」牌子、安全帽掛牆上
  * whiteboard(ctx, t, {box})                        工務所白板牆 → 回傳白板內框 {x,y,w,h}
  *
  * ── 道具 ──────────────────────────────────────────────────────────────────────────────────────
- * desk · monitor · keyboard · printer · lamp · wallClock(ctx, x, y, r, hours) · phone(ctx, …, screenFn)
- * chat(ctx, w, h, t, {title, msgs}) 通訊軟體畫面(不畫任何品牌)· stamp 蓋章 · shatter 字碎掉
- * crown 小皇冠 · envelope 信封 · cone 交通錐 · warnTape 警示帶 · extinguisher 滅火器
- * lift(ctx, x, y, s, h, o) 剪刀式高空作業車(護欄、錨點柱)· harness / lanyard / snapHook 安全帶
+ * desk(擋板)· officeChair · monitor · keyboard · printer · lamp · wallClock(ctx, x, y, r, hours) · phone(ctx, …, screenFn)
+ * chat(ctx, w, h, t, {title, msgs, hi}) 通訊軟體畫面(不畫任何品牌)· stamp 蓋章 · shatter 字裂開、碎掉
+ * crown 小皇冠 · envelope 信封 · cone 交通錐 · warnTape 警示帶 · extinguisher 滅火器 · hungHelmet 掛牆上的安全帽
+ * lift(ctx, x, y, s, h, o) 剪刀式高空作業車(護欄、錨點柱;回傳 deck 站點與 anchor 錨點)
  *
  * ── 介面(整片一直用)──────────────────────────────────────────────────────────────────────────
  * KIT.card(ctx, x, y, w, h, o)         撕紙卡片(可加膠帶)
@@ -57,13 +63,20 @@
  * KIT.checklist(ctx, t, spec)          勾選清單(check 打勾、cross 打叉)
  * KIT.chapterCard(ctx, t, t0, {n, title})  章卡,固定 KIT.CHAPTER = 1.2 秒
  * KIT.bubble(ctx, t, spec)             對話框 / 想法泡泡(think: true)
- * KIT.badge(ctx, t, {t0})              右上角常駐角標「金額皆為示意整數，非市場行情」
+ * KIT.badge(ctx, t, {t0, text})       右上角常駐角標「金額皆為示意整數，非市場行情」· KIT.badgeRect(ctx) 角標的位置
  * KIT.disclaimer(ctx, t, {t0, shrink}) 全螢幕字卡 → 縮成角標 → 之後一直是角標
  *
  * ── 字幕 ──────────────────────────────────────────────────────────────────────────────────────
  * KIT.buildCaptions(vo, {ph, maxChars}) 由 voice.json(+ durations.js 的 PH 停頓)切成一行一行的字幕:
- *                                      依標點切,「、」不切,短句合併,一行最多 maxChars 個全形字(預設 16)
+ *                                      依標點切,「、」不切,短句合併,一行最多 maxChars 個全形字(預設 16);
+ *                                      lines.js 的 display 可以用「|」指定換行的地方
  * KIT.drawCaption(ctx, t, caps)        畫在畫面底部安全框內(KIT.L.cap);旁白白字,角色台詞黃字
+ * KIT.capLength(str)                   字幕長度(全形字 = 1,半形 = 0.55)
+ *
+ * ── L003 的故事資料(每個單元都要一樣)──────────────────────────────────────────────────────────
+ * KIT.L003.TABLE1 / TABLE1_TITLE       【表 1】阿樹版報價單(附錄 A「阿樹版」)
+ * KIT.L003.QUOTE                       印出來的報價單(四行 + 含稅)
+ * KIT.L003.CREW_QUOTE / SHU_ASK        班長那一則報價訊息(含最後一行「以上純工資，不含……」小字)、阿樹的問句
  * ============================================================================================ */
 (function () {
   const U = globalThis.U, G = globalThis.G, Ch = globalThis.Ch, Subs = globalThis.Subs, Studio = globalThis.Studio;
@@ -289,10 +302,11 @@
   };
 
   // ============================== 背景 ==============================
-  function floorLines(ctx, col, seed, fy, vx = W / 2) {
-    G.line(ctx, [[-40, fy], [W + 40, fy]], { color: C.ink, lw: 5, seed });
-    for (let k = 1; k < 5; k++) { const y = fy + 18 * k * k + 16 * k; G.line(ctx, [[-40, y], [W + 40, y]], { color: col, lw: 3, seed: seed + k, alpha: 0.4 }); }
-    for (let k = -7; k <= 7; k++) G.line(ctx, [[vx + k * 190, fy + 4], [vx + k * 420, H + 220]], { color: col, lw: 3, seed: seed + 20 + k, alpha: 0.28 });
+  function floorLines(ctx, col, seed, fy, vx = W / 2, x0 = -40, x1 = W + 40) {
+    G.line(ctx, [[x0 - 40, fy], [x1 + 40, fy]], { color: C.ink, lw: 5, seed });
+    for (let k = 1; k < 5; k++) { const y = fy + 18 * k * k + 16 * k; G.line(ctx, [[x0 - 40, y], [x1 + 40, y]], { color: col, lw: 3, seed: seed + k, alpha: 0.4 }); }
+    const n = Math.ceil(Math.max(vx - x0, x1 - vx) / 190) + 1;
+    for (let k = -n; k <= n; k++) G.line(ctx, [[vx + k * 190, fy + 4], [vx + k * 420, H + 220]], { color: col, lw: 3, seed: seed + 20 + k, alpha: 0.28 });
   }
   KIT.floorLines = floorLines;
   KIT.bg = {};
@@ -320,13 +334,13 @@
   }
   KIT.pipeRun = pipeRun;
   function drawFab(ctx, o) {
-    const fy = o.floor, top = o.top, py = o.pipeY;
-    fill(ctx, -300, top - 400, W + 600, fy - top + 400, lin(ctx, 0, top, 0, fy, [[0, '#C3CED7'], [1, '#E2E8ED']]));
-    for (let x = 60; x < W; x += 240) G.line(ctx, [[x, top + 60], [x, fy - 4]], { color: '#B9C4CD', lw: 3, seed: 3000 + x, alpha: 0.55 }); // 牆板接縫
+    const fy = o.floor, top = o.top, py = o.pipeY, X0 = o.x0, X1 = o.x1; // X0..X1:畫多寬(鏡頭拉遠時要比畫面寬)
+    fill(ctx, X0 - 300, top - 400, X1 - X0 + 600, fy - top + 400, lin(ctx, 0, top, 0, fy, [[0, '#C3CED7'], [1, '#E2E8ED']]));
+    for (let x = X0 + 100; x < X1; x += 240) G.line(ctx, [[x, top + 60], [x, fy - 4]], { color: '#B9C4CD', lw: 3, seed: 3000 + x, alpha: 0.55 }); // 牆板接縫
     // 屋頂梁與桁架
-    G.rrect(ctx, -40, top + 10, W + 80, 44, 0, { fill: '#8E99A3', lw: 5, seed: 3010 });
-    for (let k = 0; k < 12; k++) { const x = -40 + k * 180; G.line(ctx, [[x, top + 54], [x + 90, top + 10]], { color: '#8E99A3', lw: 6, seed: 3011 + k }); G.line(ctx, [[x + 90, top + 10], [x + 180, top + 54]], { color: '#8E99A3', lw: 6, seed: 3030 + k }); }
-    G.rrect(ctx, -40, top - 40, W + 80, 54, 0, { fill: '#A7B2BC', lw: 5, seed: 3050 });
+    G.rrect(ctx, X0 - 40, top + 10, X1 - X0 + 80, 44, 0, { fill: '#8E99A3', lw: 5, seed: 3010 });
+    for (let x = X0 - 40; x < X1 + 40; x += 180) { G.line(ctx, [[x, top + 54], [x + 90, top + 10]], { color: '#8E99A3', lw: 6, seed: 3011 + x }); G.line(ctx, [[x + 90, top + 10], [x + 180, top + 54]], { color: '#8E99A3', lw: 6, seed: 3030 + x }); }
+    G.rrect(ctx, X0 - 40, top - 40, X1 - X0 + 80, 54, 0, { fill: '#A7B2BC', lw: 5, seed: 3050 });
     // H 型鋼柱
     for (const cx of o.columns) {
       G.rrect(ctx, cx - 38, top + 40, 76, fy - top - 40, 3, { fill: '#AEB9C3', lw: 5, seed: 3100 + cx });
@@ -345,29 +359,29 @@
       for (const sd of [-1, 1]) G.line(ctx, [[cx + sd * 66, py + 172], [cx + sd * 40, py + 232]], { color: '#7F8B96', lw: 8, seed: 3222 + cx + sd });
     }
     pipes.forEach(([c, dy, th], k) => {
-      pipeRun(ctx, -40, W + 40, py + dy, th, c, 3240 + k * 7);
+      pipeRun(ctx, X0 - 40, X1 + 40, py + dy, th, c, 3240 + k * 7);
       for (const hx of o.hangers) for (const sx of [-34, 34]) G.rrect(ctx, hx + sx - 7, py + dy - th / 2 - 6, 14, th + 12, 3, { fill: '#6C7680', lw: 3, seed: 3260 + k * 13 + hx + sx }); // 管夾
     });
     // 很高的廠房(上搖用):牆上中段的風管與電纜架,讓鏡頭往上拉的時候一路有東西經過
     if (o.duct != null) {
-      G.rrect(ctx, -40, o.duct, W + 80, 120, 6, { fill: '#C9D1D8', lw: 5, seed: 3280, hatch: { color: 'rgba(60,80,100,0.06)', gap: 10 } });
-      for (let x = 100; x < W; x += 320) G.rrect(ctx, x - 10, o.duct - 6, 20, 132, 3, { fill: '#AEB9C3', lw: 3.5, seed: 3281 + x });
+      G.rrect(ctx, X0 - 40, o.duct, X1 - X0 + 80, 120, 6, { fill: '#C9D1D8', lw: 5, seed: 3280, hatch: { color: 'rgba(60,80,100,0.06)', gap: 10 } });
+      for (let x = X0 + 140; x < X1; x += 320) G.rrect(ctx, x - 10, o.duct - 6, 20, 132, 3, { fill: '#AEB9C3', lw: 3.5, seed: 3281 + x });
     }
     if (o.tray != null) {
-      for (const sy of [0, 46]) G.line(ctx, [[-40, o.tray + sy], [W + 40, o.tray + sy]], { color: '#8E99A3', lw: 7, seed: 3290 + sy });
-      for (let x = 20; x < W; x += 60) G.line(ctx, [[x, o.tray], [x, o.tray + 46]], { color: '#8E99A3', lw: 4, seed: 3292 + x, amp: 0.4 });
+      for (const sy of [0, 46]) G.line(ctx, [[X0 - 40, o.tray + sy], [X1 + 40, o.tray + sy]], { color: '#8E99A3', lw: 7, seed: 3290 + sy });
+      for (let x = X0 + 60; x < X1; x += 60) G.line(ctx, [[x, o.tray], [x, o.tray + 46]], { color: '#8E99A3', lw: 4, seed: 3292 + x, amp: 0.4 });
       for (const cx of o.columns) G.rrect(ctx, cx - 50, o.tray + 44, 100, 14, 3, { fill: '#7F8B96', lw: 3.5, seed: 3300 + cx });
     }
     // 地坪
-    fill(ctx, -300, fy, W + 600, 800, lin(ctx, 0, fy, 0, H + 200, [[0, '#BCCAC4'], [1, '#93A29D']]));
-    floorLines(ctx, '#6C7A75', 3300, fy);
-    G.rrect(ctx, -40, fy + 146, W + 80, 18, 0, { fill: C.yellow, lw: 0, seed: 3320, alpha: 0.85 }); // 走道線(在字幕區下面)
+    fill(ctx, X0 - 300, fy, X1 - X0 + 600, 900, lin(ctx, 0, fy, 0, H + 200, [[0, '#BCCAC4'], [1, '#93A29D']]));
+    floorLines(ctx, '#6C7A75', 3300, fy, W / 2, X0, X1);
+    G.rrect(ctx, X0 - 40, fy + 146, X1 - X0 + 80, 18, 0, { fill: C.yellow, lw: 0, seed: 3320, alpha: 0.85 }); // 走道線(在字幕區下面)
     // 機台一列(靠牆)
     if (o.machines) o.machines.forEach(([x, w, h], k) => machine(ctx, x, fy - 6, w, h, 3400 + k * 30));
   }
   KIT.bg.fab = (ctx, t, o = {}) => {
-    const opt = { floor: KIT.L.ground, top: 0, pipeY: 96, columns: [150, 960, 1770], hangers: [560, 1360], machines: [[260, 300, 290], [600, 300, 250], [1060, 320, 280], [1420, 300, 250]], ...o };
-    if (opt.cache === false || opt.top !== 0) drawFab(ctx, opt);
+    const opt = { floor: KIT.L.ground, top: 0, pipeY: 96, x0: -40, x1: W + 40, columns: [150, 960, 1770], hangers: [560, 1360], machines: [[260, 300, 290], [600, 300, 250], [1060, 320, 280], [1420, 300, 250]], ...o };
+    if (opt.cache === false || opt.top !== 0 || opt.x0 !== -40) drawFab(ctx, opt);
     else KIT.cached(ctx, 'fab|' + JSON.stringify(opt), (x) => drawFab(x, opt));
   };
   // ---- 小工程行辦公室(白天 / 晚上)----
@@ -555,7 +569,7 @@
     ctx.restore();
   };
   // 通訊軟體畫面(不畫任何品牌)。msgs [{ me, at, text | parts: [{ text, size, color, font, big }] }]:一則訊息可以有好幾段
-  // (例如金額放大、最後一行小字);依 at 彈出。hi { '訊息.段': 時間 } 讓那一段亮起。回傳每一則、每一段的位置(螢幕座標)
+  // (例如金額放大、最後一行小字);依 at 彈出。hi { '訊息.段': 時間 | [開始, 結束] } 讓那一段亮起。回傳每一則、每一段的位置
   KIT.chat = (ctx, w, h, t, { title = '', msgs = [], size = 38, top = 96, pad = 22, gap = 18, hi = {}, scroll = 0, seed = 190 } = {}) => {
     fill(ctx, 0, 0, w, h, '#DCE5EC');
     const boxes = [];
@@ -577,7 +591,8 @@
         ctx.fillStyle = m.me ? '#A6E08E' : '#FFFFFF'; ctx.strokeStyle = 'rgba(40,40,50,0.25)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.roundRect(bx, y, bw, bh, 22); ctx.fill(); ctx.stroke();
         parts.forEach((p, j) => {
-          const r = box.parts[j], h0 = hi[`${k}.${j}`] ?? (j === 0 ? hi[k] : undefined), glow = h0 != null ? clamp((t - h0) / 0.2) : 0;
+          const hv = hi[`${k}.${j}`] ?? (j === 0 ? hi[k] : undefined), [h0, h1] = Array.isArray(hv) ? hv : [hv, Infinity];
+          const r = box.parts[j], glow = h0 != null ? clamp((t - h0) / 0.2) * (1 - clamp((t - h1) / 0.25)) : 0;
           if (glow > 0) { ctx.save(); ctx.globalAlpha *= glow; ctx.fillStyle = 'rgba(255,214,80,0.6)'; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 12); ctx.fill(); ctx.restore(); }
           p.lines.forEach((ln, i) => G.text(ctx, ln, bx + pad, r.y + 4 + p.sz * 0.98 + i * p.sz * 1.28, { size: p.sz, fam: p.fam, weight: p.big ? 800 : 700, color: p.color || '#2A2320', boil: 0 }));
         });
@@ -622,12 +637,18 @@
     const tris = [];
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1); if ((i + j) % 2) { tris.push([a, b, c], [a, c, d]); } else { tris.push([a, b, d], [b, c, d]); } }
     const dt = t - t0;
-    if (dt < 0) { // 裂痕
+    if (dt < 0) { // 裂痕:從中間一點往外裂開幾道鋸齒線
       G.text(ctx, text, x, y, { size, fam, weight, color, align, boil: 0 });
-      const u = clamp((dt + crack) / crack);
-      ctx.save(); ctx.globalAlpha *= u; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4; ctx.beginPath();
-      for (const tr of tris.slice(0, Math.ceil(tris.length * u))) { ctx.moveTo(tr[0][0], tr[0][1]); ctx.lineTo(tr[1][0], tr[1][1]); ctx.lineTo(tr[2][0], tr[2][1]); }
-      ctx.stroke(); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+      const u = ease.outCubic(clamp((dt + crack) / crack)), ox = x0 + tw * 0.48, oy = y0 + bh * 0.46;
+      ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      for (let k = 0; k < 6; k++) {
+        const an = k * Math.PI / 3 + (U.hash(seed, k, 9) - 0.5) * 0.7, len = (0.55 + U.hash(seed, k, 8) * 0.45) * Math.max(tw * 0.62, bh * 0.9);
+        const pts = [[ox, oy]];
+        for (let j = 1; j <= 4; j++) { const r = len * j / 4, wob = (U.hash(seed, k, j) - 0.5) * 0.5; pts.push([ox + Math.cos(an + wob) * r, oy + Math.sin(an + wob) * r * 0.62]); }
+        const P = partial(pts, u);
+        stroke(ctx, P, '#FFFDF4', 7); stroke(ctx, P, C.ink, 3);
+      }
+      ctx.restore();
       return;
     }
     const key = `${text}|${size}|${fam}|${weight}|${color}|${G.scale || 1}`;
@@ -693,10 +714,11 @@
   //   at                 整張卡片彈出的時間      grow  true = 還沒出現的列不佔位置(卡片一列一列長高)
   //   rows [{ cells: ['材料', '120,000' | (t) => 字串], at 出現, hi 亮起(數字或 [開始, 結束]),
   //           strike 劃掉, big 放大, kind: 'sub' 小計 | 'total' 總計, color, open 這一列從 0 高度裂開, flash 紅色虛線閃 }]
+  //   foot               卡片底下多留的空白(手拿著紙的時候,大拇指放這裡才不會蓋到字)
   //   回傳 { h, rows: [{ y, h, base }] }(卡片自己的座標,跟 x, y 相加就是畫面座標)
   KIT.table = (ctx, t, o) => {
     const { x, y, w, rows, title = '', head = null, size = 44, rowH = 74, pad = 32, at = -Infinity, seed = 700, grow = false, fill: paper = C.paper,
-      cols = [{ w: 0.6, align: 'left' }, { w: 0.4, align: 'right', num: true }], titleSize = 46, headSize = 36, scale = 1, alpha = 1 } = o;
+      cols = [{ w: 0.6, align: 'left' }, { w: 0.4, align: 'right', num: true }], titleSize = 46, headSize = 36, scale = 1, alpha = 1, foot = 0 } = o;
     if (t < at) return null;
     const ap = at === -Infinity ? 1 : popIn(t, at, 0.35);
     const rowHt = (r) => {
@@ -706,7 +728,7 @@
     };
     const titleH = title ? titleSize * 1.75 : 0, headH = head ? headSize * 1.7 : 0;
     const hs = rows.map(rowHt), bodyH = hs.reduce((a, b) => a + b, 0);
-    const Ht = pad * 0.8 + titleH + headH + bodyH + pad * 0.7;
+    const Ht = pad * 0.8 + titleH + headH + bodyH + pad * 0.7 + foot; // foot:底下多留的空白(手拿著的地方)
     const iw = w - 2 * pad, cx = []; let acc = pad; cols.forEach((c) => { cx.push(acc); acc += c.w * iw; });
     const out = { h: Ht, rows: [] };
     ctx.save(); ctx.globalAlpha *= alpha;
@@ -744,7 +766,7 @@
           const c = cols[i], str = typeof cell === 'function' ? cell(t) : cell;
           if (str == null || str === '') return;
           const isNum = !!c.num, sz = (r.kind === 'total' ? size * 1.08 : size) * (isNum && big > 0 ? 1 + 0.32 * big : 1);
-          const col = (r.colors && r.colors[i]) || (isNum && r.kind === 'total' ? C.red : r.color) || (r.kind === 'sub' && !isNum ? C.muted : C.ink);
+          const col = (r.colors && r.colors[i]) || (isNum && r.kind === 'total' ? '#B5381F' : r.color) || (r.kind === 'sub' && !isNum ? C.muted : C.ink);
           const ax = c.align === 'right' ? cx[i] + c.w * iw : cx[i];
           ctx.save(); ctx.globalAlpha *= ra * dim;
           ctx.translate(ax, base); ctx.scale(pop, pop); ctx.translate(-ax, -base);
@@ -875,8 +897,11 @@
     if (cur) out.push({ s: cur, p: null });
     return out;
   }
-  // 太長的一段從中間附近切開(不切在英數字串裡、不讓標點落在行首)
+  // 太長的一段從中間附近切開(不切在英數字串裡、不切在「兩|吋」這種數字和單位中間、不讓標點落在行首)。
+  // display 裡可以用「|」指定這一句要從哪裡切(字幕上不會出現)
+  const ZH_NUM = /[一二三四五六七八九十兩幾零百千萬]/;
   function splitLong(s, maxChars) {
+    if (s.includes('|')) return s.split('|').filter(Boolean).flatMap((p) => splitLong(p, maxChars));
     if (wlen(s) <= maxChars) return [s];
     const chars = [...s], n = Math.ceil(wlen(s) / maxChars), out = [];
     let start = 0;
@@ -885,7 +910,7 @@
       for (let i = start + 1; i < chars.length - 1; i++) {
         const left = wlen(chars.slice(0, i).join(''));
         if (/[A-Za-z0-9,.]/.test(chars[i - 1]) && /[A-Za-z0-9,.]/.test(chars[i])) continue;
-        if (NO_START.test(chars[i])) continue;
+        if (NO_START.test(chars[i]) || ZH_NUM.test(chars[i - 1])) continue;
         const d = Math.abs(left - target); if (d < bestD) { bestD = d; best = i; }
       }
       if (best < 0) break;
@@ -895,6 +920,7 @@
     return out;
   }
   const cleanCap = (s) => s.replace(/[，。：；]+$/u, '').replace(/[，：；]/gu, '　').replace(/。/gu, '　').trim();
+  const noBar = (s) => s.replace(/\|/g, '');
   KIT.buildCaptions = (vo, { ph = globalThis.PH, maxChars = KIT.L.cap.maxChars, hold = 0.35, maxDur = 3.6 } = {}) => {
     const caps = [], lines = (vo && vo.lines) || [];
     lines.forEach((l, i) => {
@@ -917,11 +943,11 @@
         const g = groups[groups.length - 1];
         const sentenceEnd = g && /[。？！]$/u.test(g.s);
         const joined = g ? g.s + sg.s : '';
-        if (g && (/、$/u.test(g.s) || (!sentenceEnd && wlen(cleanCap(joined)) <= maxChars && sg.t1 - g.t0 <= maxDur))) { g.s = joined; g.t1 = sg.t1; }
+        if (g && (/、$/u.test(g.s) || (!sentenceEnd && !g.s.includes('|') && !sg.s.includes('|') && wlen(noBar(cleanCap(joined))) <= maxChars && sg.t1 - g.t0 <= maxDur))) { g.s = joined; g.t1 = sg.t1; }
         else groups.push({ ...sg });
       }
       for (const g of groups) {
-        const parts = splitLong(cleanCap(g.s), maxChars), tot = parts.reduce((a, p) => a + wlen(p), 0) || 1;
+        const parts = splitLong(cleanCap(g.s), maxChars).map(noBar).filter(Boolean), tot = parts.reduce((a, p) => a + wlen(p), 0) || 1;
         let acc = 0;
         for (const p of parts) { const a = g.t0 + (g.t1 - g.t0) * acc / tot; acc += wlen(p); caps.push({ t: a, end: g.t0 + (g.t1 - g.t0) * acc / tot, text: p, who: l.who || 'narrator' }); }
       }
