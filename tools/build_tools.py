@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 from openpyxl import Workbook
-from openpyxl.formatting.rule import CellIsRule
+from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -292,6 +292,28 @@ CHECKLISTS = [
         "episode": "第 10 集〈第二個倒下的人〉",
         "category": "工安",
     },
+    {
+        "slug": "loto-check",
+        "title": "上鎖掛牌確認表",
+        "desc": "設備維修前的上鎖掛牌確認清單:找出所有能源、停機隔離、每人上鎖、試啟動驗證、作業中與解除。",
+        "lead": "上了鎖,還要證明它真的不會動。動手之前,每一項都確認過一次。",
+        "rule_title": "這張表的用法:",
+        "rules": ["任何一項選「無」,就不動手。", "試啟動之前,所有人都要離開設備。", "上鎖掛牌的程序、鎖具與授權人員依廠規辦理,本表只是提醒。"],
+        "plan": {"": "還沒決定怎麼處理", "fix": "動手前補上", "stop": "今天先不動手", "report": "已回報負責人處理"},
+        "done_msg": "每一項都確認過了。解除上鎖之前,記得再看最後一段。",
+        "xlsx_how": "維修前逐項確認,在「結果」選「有/無/不適用」。任何一項選「無」就不動手。",
+        "meta": ["日期", "設備名稱與編號", "作業內容", "上鎖人"],
+        "groups": [
+            g("一、準備", ("已取得作業許可,並通知使用單位停機時間", "依廠規"), ("已找出這台設備的所有能源", "電、氣、液、蒸汽、壓力、彈簧、重力、高溫"), ("已對照設備編號,確認要隔離的開關與閥件屬於這一台", "標示可能貼錯")),
+            g("二、停機與隔離", "設備已用正常程序停機", ("所有能源都已隔離:開關切斷、閥件關閉", "依廠規"), ("殘留的能量已釋放或固定:洩壓、排放、放電、固定會動的部分", "不靠鬆接頭洩壓")),
+            g("三、上鎖掛牌", ("每一個隔離點都上鎖、掛牌", "牌上寫姓名、日期、原因"), ("每一位作業人員都掛上自己的鎖", "多人作業用多孔鎖扣"), "鑰匙由上鎖的人自己保管"),
+            g("四、驗證", ("試啟動之前,所有人都已離開設備", "確認沒有人靠近"), ("按啟動鈕或用正常操作方式試啟動,確認設備不會動", "會動就是鎖錯了"), ("電氣部分已由合格人員量測,確認沒有電", "依廠規"), ("試完之後,把啟動開關切回停止或關閉", "避免復電時直接啟動")),
+            g("五、作業中", ("換班或休息時,鎖不拆,交接清楚", "依廠規"), "作業中發現標示錯誤或新的能源,先停下來回報"),
+            g("六、解除", "工具、材料已清出,防護蓋已裝回", "所有人員已離開設備,並清點過", ("由上鎖的人自己拆自己的鎖", "不可以由別人代拆"), "已通知使用單位恢復運轉", ("發現的標示錯誤已回報改正", "當天就改")),
+        ],
+        "episode": "第 14 集〈按一下啟動鈕〉",
+        "category": "工安",
+    },
 ]
 
 
@@ -383,6 +405,89 @@ MESSAGES = [
         "footer": "本範本為通用管理格式,可依團隊習慣調整。",
         "episode": "第 7 集〈這個你處理一下〉",
         "category": "溝通與管理",
+    },
+    {
+        "slug": "near-miss-report",
+        "title": "虛驚事件回報範本",
+        "desc": "差一點出事的回報範本:時間地點、發生什麼、差點造成什麼、當下處理、建議改善。只寫事,不寫誰的錯。",
+        "lead": "差一點的事,講出來,才不會變成真的。填好下面幾段,就是可以直接傳給工安或主管的回報。",
+        "rule_title": "寫虛驚回報的原則:",
+        "rules": ["只寫事實,不寫誰的錯。目的是找原因,不是找人。", "寫清楚差點造成什麼後果,大家才知道有多危險。", "建議改善要寫具體做法,不要只寫「加強注意」。", "當天寫,當天傳。"],
+        "groups": [
+            {"title": "基本資料", "fields": [
+                {"id": "to", "label": "回報給誰", "placeholder": "例:工安課、工地主任", "required": True},
+                {"id": "when", "label": "時間", "placeholder": "例:11/23(一)上午 10:20", "required": True},
+                {"id": "where", "label": "地點", "placeholder": "例:B 棟三樓東側樓板邊緣的正下方", "required": True},
+            ]},
+            {"title": "經過", "fields": [
+                {"id": "what", "label": "發生什麼", "hint": "照順序寫,只寫看到的事實。", "placeholder": "例:一根鋼管從三樓樓板邊緣掉落,落在二樓走道上。當時有人經過,沒有人受傷。", "multiline": True, "required": True},
+                {"id": "could", "label": "差點造成什麼", "placeholder": "例:如果落在人身上,可能造成頭部或肩部重傷。", "multiline": True, "required": True},
+                {"id": "action", "label": "當下怎麼處理", "placeholder": "例:下方走道先拉警戒,三樓邊緣的材料先移到內側。", "multiline": True},
+            ]},
+            {"title": "原因與改善", "fields": [
+                {"id": "cause", "label": "可能的原因", "placeholder": "例:樓板邊緣沒有擋板,材料堆放太靠邊。", "multiline": True},
+                {"id": "fix", "label": "建議怎麼改", "hint": "寫具體做法,不要只寫「加強注意」。", "placeholder": "例:樓板邊緣加裝擋板;材料堆放區畫線,和邊緣保持距離。", "multiline": True, "required": True},
+                {"id": "from", "label": "回報人(可以不填)", "placeholder": "可以匿名"},
+            ]},
+        ],
+        "output": [
+            {"heading": "", "fields": ["to"], "optional": True},
+            {"text": "回報一件虛驚事件(沒有人受傷),請協助追蹤改善。"},
+            {"heading": "【時間地點】", "fields": ["when", "where"]},
+            {"heading": "【發生什麼】", "fields": ["what"]},
+            {"heading": "【差點造成什麼】", "fields": ["could"]},
+            {"heading": "【當下處理】", "fields": ["action"], "optional": True},
+            {"heading": "【可能原因】", "fields": ["cause"], "optional": True},
+            {"heading": "【建議改善】", "fields": ["fix"]},
+            {"heading": "", "fields": ["from"], "optional": True},
+        ],
+        "suffix": {"to": "您好:"},
+        "prefix": {"when": "時間:", "where": "地點:", "from": "回報人:"},
+        "tips": ["虛驚不是沒事,是還沒出事。", "回報的目的是改善,不是找人負責。", "同樣的虛驚出現第二次,代表上一次的改善沒有做到。"],
+        "footer": "本範本為通用格式。正式的事故與虛驚通報程序,依公司與業主的規定辦理。",
+        "episode": "第 12 集〈差一點,要不要講〉",
+        "category": "工安",
+    },
+    {
+        "slug": "test-deviation-report",
+        "title": "測試異常說明範本",
+        "desc": "測試結果不合格時,向業主或監造說明的範本:測了什麼、結果、可能原因、已做的處理、複測計畫。",
+        "lead": "數字可以重測,不可以改。照實寫下第一次的結果,再寫你怎麼處理,業主反而比較放心。",
+        "rule_title": "寫測試異常說明的原則:",
+        "rules": ["第一次的結果照實寫,不改數字,不省略。", "原因還沒確定,就寫「可能原因」和「怎麼確認」。", "寫清楚複測的時間,以及需要業主或監造確認的事。"],
+        "groups": [
+            {"title": "基本資料", "fields": [
+                {"id": "to", "label": "給誰", "placeholder": "例:李工程師(監造)", "required": True},
+                {"id": "item", "label": "測試項目與範圍", "placeholder": "例:二樓空壓管路 A 區段保壓測試", "required": True},
+                {"id": "basis", "label": "依據的規範", "placeholder": "例:業主施工規範第 X 章", "required": True},
+            ]},
+            {"title": "結果", "fields": [
+                {"id": "result", "label": "結果與標準", "hint": "照實寫數值、標準與測試條件。", "placeholder": "例:實測值 ___,標準為 ___,未達標準。測試時間 ___ 至 ___,溫度 ___。", "multiline": True, "required": True},
+                {"id": "cause", "label": "可能原因與確認方式", "placeholder": "例:初步檢查發現一處接頭沒有鎖到位,正在逐一確認其他接頭。", "multiline": True, "required": True},
+            ]},
+            {"title": "處理與複測", "fields": [
+                {"id": "done", "label": "已經做的處理", "placeholder": "例:該接頭已依原廠說明重新處理。", "multiline": True},
+                {"id": "retest", "label": "複測計畫", "placeholder": "例:明天上午 9:00 複測,請監造到場見證。", "multiline": True, "required": True},
+                {"id": "need", "label": "需要對方確認的事", "placeholder": "例:複測時間是否可以;驗收是否順延半天。"},
+                {"id": "from", "label": "你的名字", "placeholder": "例:阿樹"},
+            ]},
+        ],
+        "output": [
+            {"heading": "", "fields": ["to"], "optional": True},
+            {"heading": "【測試項目】", "fields": ["item", "basis"]},
+            {"heading": "【結果】", "fields": ["result"]},
+            {"heading": "【可能原因】", "fields": ["cause"]},
+            {"heading": "【已做處理】", "fields": ["done"], "optional": True},
+            {"heading": "【複測計畫】", "fields": ["retest"]},
+            {"heading": "【需要您確認】", "fields": ["need"], "optional": True},
+            {"heading": "", "fields": ["from"], "optional": True},
+        ],
+        "suffix": {"to": "您好:"},
+        "prefix": {"basis": "依據:"},
+        "tips": ["不合格不可怕,隱瞞才可怕。", "複測紀錄和第一次的紀錄一起保存,不要覆蓋。", "測試條件(時間、溫度、儀器)一起寫,數字才有意義。"],
+        "footer": "本範本為通用溝通格式。測試方法、標準與判定,依業主規範與合約辦理。",
+        "episode": "第 13 集〈差一點點的數字〉",
+        "category": "品質與施工",
     },
 ]
 
@@ -698,6 +803,227 @@ def example_check():
             "min_cum": min(cum), "month": cum.index(min(cum)) + 1, "negative_months": sum(1 for v in cum if v < 0)}
 
 
+def subcontractor_xlsx(path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "比價"
+    vendors = ["包商 A", "包商 B", "包商 C"]
+    ncol = 3 + 3 * len(vendors) + 1
+    title_rows(ws, "包商比價評估表", "先把每一家的報價拆成同樣的項目,數量一律用我方估算的數量,再填各家單價。單價空白的格子會變黃,代表這一家沒有報;備註請照抄對方寫的「另計」「依現場」「不含」。", ncol)
+    ws.append(["低於平均多少要追問(可自行調整)", 0.15])
+    r_th = ws.max_row
+    ws.cell(row=r_th, column=2).number_format = "0%"
+    ws.cell(row=r_th, column=2).fill = PatternFill("solid", fgColor="FFF6D6")
+    ws.cell(row=r_th, column=1).font = Font(bold=True)
+    ws.append([])
+    top = ["項目", "單位", "數量(我方估算)"]
+    for v in vendors:
+        top += [v, "", ""]
+    top += ["最低單價"]
+    ws.append(top)
+    r1 = ws.max_row
+    sub = ["", "", ""] + ["單價", "金額", "備註(另計/依現場/不含)"] * len(vendors) + [""]
+    ws.append(sub)
+    r2 = ws.max_row
+    for c in range(1, ncol + 1):
+        for r in (r1, r2):
+            cell = ws.cell(row=r, column=c)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill("solid", fgColor=INK)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = BORDER
+    for i in range(len(vendors)):
+        c0 = 4 + 3 * i
+        ws.merge_cells(start_row=r1, start_column=c0, end_row=r1, end_column=c0 + 2)
+    for c in (1, 2, 3, ncol):
+        ws.merge_cells(start_row=r1, start_column=c, end_row=r2, end_column=c)
+    samples = ["配管", "支撐與吊架", "閥件安裝", "測試", "吊車或高空作業車", "清潔與廢料清運", "管理費", "", "", "", "", "", "", "", ""]
+    first = r2 + 1
+    yellow = PatternFill("solid", fgColor="FFF2B3")
+    for name in samples:
+        ws.append([name or None])
+        r = ws.max_row
+        unit_cells = []
+        for i in range(len(vendors)):
+            pc = get_column_letter(4 + 3 * i)
+            ac = get_column_letter(5 + 3 * i)
+            ws[f"{ac}{r}"] = f'=IF(OR($C{r}="",{pc}{r}=""),"",$C{r}*{pc}{r})'
+            ws[f"{pc}{r}"].number_format = "#,##0"
+            ws[f"{ac}{r}"].number_format = "#,##0"
+            unit_cells.append(f"{pc}{r}")
+            ws.conditional_formatting.add(f"{pc}{r}", FormulaRule(formula=[f'AND($A{r}<>"",{pc}{r}="")'], fill=yellow))
+        lc = get_column_letter(ncol)
+        ws[f"{lc}{r}"] = f'=IF(COUNT({",".join(unit_cells)})=0,"",MIN({",".join(unit_cells)}))'
+        ws[f"{lc}{r}"].number_format = "#,##0"
+        for c in range(1, ncol + 1):
+            ws.cell(row=r, column=c).border = BORDER
+            ws.cell(row=r, column=c).alignment = WRAP
+    last = ws.max_row
+    ws.append(["總價"])
+    r_tot = ws.max_row
+    ws.append(["沒有報價的項目數"])
+    r_miss = ws.max_row
+    ws.append(["寫了另計、依現場、不含的項目數"])
+    r_vague = ws.max_row
+    ws.append(["和平均總價的差距"])
+    r_diff = ws.max_row
+    totals = [f"{get_column_letter(5 + 3 * i)}{r_tot}" for i in range(len(vendors))]
+    for i in range(len(vendors)):
+        pc = get_column_letter(4 + 3 * i)
+        ac = get_column_letter(5 + 3 * i)
+        nc = get_column_letter(6 + 3 * i)
+        ws[f"{ac}{r_tot}"] = f"=SUM({ac}{first}:{ac}{last})"
+        ws[f"{ac}{r_tot}"].number_format = "#,##0"
+        ws[f"{ac}{r_miss}"] = f'=SUMPRODUCT(($A${first}:$A${last}<>"")*({pc}{first}:{pc}{last}=""))'
+        ws[f"{ac}{r_vague}"] = (f'=COUNTIF({nc}{first}:{nc}{last},"*另計*")+COUNTIF({nc}{first}:{nc}{last},"*依現場*")'
+                                f'+COUNTIF({nc}{first}:{nc}{last},"*不含*")')
+        cnt = "+".join(f"({t}>0)" for t in totals)
+        ws[f"{ac}{r_diff}"] = f'=IF(OR({ac}{r_tot}=0,({cnt})<2),"",{ac}{r_tot}/(SUM({",".join(totals)})/({cnt}))-1)'
+        ws[f"{ac}{r_diff}"].number_format = "+0%;-0%;0%"
+        ws[f"{nc}{r_diff}"] = f'=IF({ac}{r_diff}="","",IF({ac}{r_diff}<-$B${r_th},"偏低,要追問",""))'
+    red = PatternFill("solid", fgColor="F6C9C0")
+    for i in range(len(vendors)):
+        ac = get_column_letter(5 + 3 * i)
+        ws.conditional_formatting.add(f"{ac}{r_diff}", FormulaRule(formula=[f'AND({ac}{r_diff}<>"",{ac}{r_diff}<-$B${r_th})'], fill=red))
+        ws.conditional_formatting.add(f"{ac}{r_miss}:{ac}{r_vague}", CellIsRule(operator="greaterThan", formula=["0"], fill=yellow))
+    for r in (r_tot, r_miss, r_vague, r_diff):
+        for c in range(1, ncol + 1):
+            ws.cell(row=r, column=c).font = Font(bold=True)
+            ws.cell(row=r, column=c).border = BORDER
+    widths = [22, 7, 12] + [11, 12, 20] * len(vendors) + [11]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = ws.cell(row=first, column=2)
+    landscape(ws, r1)
+
+    ws2 = wb.create_sheet("評估")
+    title_rows(ws2, "包商評估(不只比價格)", "每一項給 1 到 5 分(5 分最好),權重可以自己調整,合計建議維持 100。總分滿分 100。", 2 + len(vendors))
+    ws2.append([])
+    ws2.append(["評估項目", "權重"] + vendors)
+    h = ws2.max_row
+    style_header(ws2, h, 2 + len(vendors))
+    crit = [("價格(比價結果)", 30), ("手上案量與可投入的人力", 15), ("過往類似案子的實績", 15), ("報價完整度(沒有報、另計、依現場的項目)", 15),
+            ("工安紀錄", 10), ("付款與保固條件", 10), ("溝通與配合度", 5)]
+    dv = DataValidation(type="whole", operator="between", formula1="1", formula2="5", allow_blank=True)
+    ws2.add_data_validation(dv)
+    for name, wgt in crit:
+        ws2.append([name, wgt])
+        r = ws2.max_row
+        for c in range(1, 3 + len(vendors)):
+            ws2.cell(row=r, column=c).border = BORDER
+            ws2.cell(row=r, column=c).alignment = WRAP
+        for c in range(3, 3 + len(vendors)):
+            dv.add(ws2.cell(row=r, column=c))
+    e = ws2.max_row
+    ws2.append(["權重合計", f"=SUM(B{h + 1}:B{e})"])
+    ws2.append(["總分(滿分 100)", ""] + [f'=IF(COUNT({get_column_letter(c)}{h + 1}:{get_column_letter(c)}{e})<{e - h},"(還沒評完)",ROUND(SUMPRODUCT($B${h + 1}:$B${e},{get_column_letter(c)}{h + 1}:{get_column_letter(c)}{e})/5*100/$B${e + 1},0))' for c in range(3, 3 + len(vendors))])
+    for r in (e + 1, e + 2):
+        for c in range(1, 3 + len(vendors)):
+            ws2.cell(row=r, column=c).font = Font(bold=True)
+            ws2.cell(row=r, column=c).border = BORDER
+    ws2.column_dimensions["A"].width = 40
+    ws2.column_dimensions["B"].width = 10
+    for c in range(3, 3 + len(vendors)):
+        ws2.column_dimensions[get_column_letter(c)].width = 14
+
+    ws3 = wb.create_sheet("要問的問題")
+    title_rows(ws3, "發包前要問的問題", "電話或面談時逐一問,答案記在右邊。答不出來,或答案每次不一樣,本身就是答案。", 1 + len(vendors))
+    ws3.append([])
+    ws3.append(["問題"] + vendors)
+    h3 = ws3.max_row
+    style_header(ws3, h3, 1 + len(vendors))
+    qs = ["手上現在有幾個案子?這個案子預計什麼時候進場、進幾個人?", "人是自己的,還是會再發包出去?", "上一個類似的案子在哪裡做?可以讓我們聯絡對方嗎?",
+          "報價裡寫「另計」「依現場」的項目,大概會多少?", "吊車、高空作業車、廢料清運,有沒有含在報價裡?", "付款條件和保固怎麼做?", "現場負責人是誰?每天都會在現場嗎?",
+          "過去有沒有發生過工安事故?怎麼處理的?"]
+    for q in qs:
+        ws3.append([q])
+        r = ws3.max_row
+        ws3.row_dimensions[r].height = 36
+        for c in range(1, 2 + len(vendors)):
+            ws3.cell(row=r, column=c).border = BORDER
+            ws3.cell(row=r, column=c).alignment = WRAP
+    ws3.column_dimensions["A"].width = 52
+    for c in range(2, 2 + len(vendors)):
+        ws3.column_dimensions[get_column_letter(c)].width = 26
+    wb.save(path)
+
+
+def contact_matrix_xlsx(path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "決策權限"
+    cols = ["事項", "誰可以下指示", "誰可以核准", "需要通知誰", "書面方式", "業主確認簽名"]
+    title_rows(ws, "窗口與決策權限表", "開工第一天請業主自己填、自己簽名。之後誰來下指示,先對這張表:表上沒有權限的人講的話,請他找有權限的人書面確認。", len(cols))
+    ws.append([])
+    ws.append(cols)
+    h = ws.max_row
+    style_header(ws, h, len(cols))
+    items = ["技術指示(施工方式、安裝位置)", "圖面變更", "追加減的範圍確認", "追加減的金額核准", "進度與工期調整", "停機、停氣、停電申請",
+             "動火與其他危險作業許可", "文件與送審資料簽收", "測試見證", "驗收", "估驗與請款"]
+    dv = DataValidation(type="list", formula1='"簽單,電子郵件,公文,系統,會議紀錄"', allow_blank=True)
+    ws.add_data_validation(dv)
+    for it in items:
+        ws.append([it])
+        r = ws.max_row
+        ws.row_dimensions[r].height = 30
+        dv.add(ws.cell(row=r, column=5))
+        for c in range(1, len(cols) + 1):
+            ws.cell(row=r, column=c).border = BORDER
+            ws.cell(row=r, column=c).alignment = WRAP
+    ws.append([])
+    ws.append(["本表經雙方確認"])
+    ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
+    ws.append(["業主代表簽名", "", "日期", ""])
+    ws.append(["承攬方代表簽名", "", "日期", ""])
+    for i, w in enumerate([30, 18, 18, 18, 14, 18], 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    landscape(ws, h)
+
+    ws2 = wb.create_sheet("窗口名單")
+    cols2 = ["單位", "姓名", "職稱", "電話", "電子郵件或通訊軟體", "負責範圍", "代理人"]
+    title_rows(ws2, "窗口名單", "業主、監造與我方的聯絡窗口。人員異動時當天更新。", len(cols2))
+    ws2.append([])
+    ws2.append(cols2)
+    h2 = ws2.max_row
+    style_header(ws2, h2, len(cols2))
+    for unit in ["使用單位", "廠務", "採購", "工安", "監造", "我方"] + [""] * 6:
+        ws2.append([unit or None])
+        for c in range(1, len(cols2) + 1):
+            ws2.cell(row=ws2.max_row, column=c).border = BORDER
+    for i, w in enumerate([14, 12, 12, 16, 24, 24, 12], 1):
+        ws2.column_dimensions[get_column_letter(i)].width = w
+
+    ws3 = wb.create_sheet("指示紀錄")
+    cols3 = ["日期", "誰下的指示", "單位", "指示內容", "依權限表,他可以決定嗎", "已經書面確認", "影響", "後續處理"]
+    title_rows(ws3, "指示紀錄", "每一個現場指示都記一筆。「不可以決定」又「還沒有書面確認」的列會變紅:先停,找有權限的人確認。", len(cols3))
+    ws3.append([])
+    ws3.append(cols3)
+    h3 = ws3.max_row
+    style_header(ws3, h3, len(cols3))
+    can = DataValidation(type="list", formula1='"可以,不可以,不確定"', allow_blank=True)
+    done = DataValidation(type="list", formula1='"是,否"', allow_blank=True)
+    eff = DataValidation(type="list", formula1='"無,工期,金額,工期與金額"', allow_blank=True)
+    for d in (can, done, eff):
+        ws3.add_data_validation(d)
+    n = 40
+    for i in range(1, n + 1):
+        r = h3 + i
+        can.add(ws3.cell(row=r, column=5))
+        done.add(ws3.cell(row=r, column=6))
+        eff.add(ws3.cell(row=r, column=7))
+        ws3.cell(row=r, column=1).number_format = "yyyy/mm/dd"
+        for c in range(1, len(cols3) + 1):
+            ws3.cell(row=r, column=c).border = BORDER
+            ws3.cell(row=r, column=c).alignment = WRAP
+    red = PatternFill("solid", fgColor="F6C9C0")
+    ws3.conditional_formatting.add(f"A{h3 + 1}:H{h3 + n}", FormulaRule(formula=[f'AND($E{h3 + 1}<>"可以",$E{h3 + 1}<>"",$F{h3 + 1}<>"是")'], fill=red))
+    for i, w in enumerate([11, 12, 12, 34, 16, 12, 12, 24], 1):
+        ws3.column_dimensions[get_column_letter(i)].width = w
+    ws3.freeze_panes = ws3.cell(row=h3 + 1, column=1)
+    landscape(ws3, h3)
+    wb.save(path)
+
+
 EXCEL_TOOLS = [
     {"slug": "weekly-report", "title": "團隊週報模板", "file": "團隊週報模板.xlsx", "builder": weekly_report_xlsx,
      "desc": "三張表:組員週報(每人一列,寫交付成果)、課長彙整(給主管的五段式)、過程指標 KPI 追蹤(附達成率公式)。",
@@ -711,6 +1037,14 @@ EXCEL_TOOLS = [
      "desc": "按月填入收入與支出,自動算出累計現金流、最大資金缺口與發生月份;附一個「帳上賺錢、戶頭沒錢」的範例。",
      "episode": "第 8 集〈帳上賺錢,戶頭沒錢〉", "category": "計價與報價",
      "points": ["累計現金流最低的那一格,就是公司要先墊的錢", "範例:帳面賺二十萬,最多要先墊兩百萬,第八個月才回正", "報價前先算一次,付款條件才知道要怎麼談"]},
+    {"slug": "subcontractor-compare", "title": "包商比價評估表", "file": "包商比價評估表.xlsx", "builder": subcontractor_xlsx,
+     "desc": "三家包商的報價拆成同樣的項目對齊比較,自動標出沒有報價、另計、偏低的地方;附加權評估與發包前要問的問題。",
+     "episode": "第 11 集〈最便宜的包商〉", "category": "計價與報價",
+     "points": ["數量一律用我方估算,各家只填單價,才比得出真正的差別", "沒有報價的格子變黃;總價比平均低太多的會標出來,要追問", "評估不只看價格:案量、人力、實績、報價完整度、工安紀錄都要算"]},
+    {"slug": "contact-matrix", "title": "窗口與決策權限表", "file": "窗口與決策權限表.xlsx", "builder": contact_matrix_xlsx,
+     "desc": "開工第一天請業主填寫:誰可以下指示、誰可以核准變更、誰簽收文件;附窗口名單與指示紀錄,沒有權限又沒有書面的指示會標紅。",
+     "episode": "第 15 集〈業主有三個窗口〉", "category": "溝通與管理",
+     "points": ["請業主自己填、自己簽名,之後有爭議回到表上處理", "每一個現場指示都記一筆,寫清楚是誰講的", "沒有權限又沒有書面確認的指示,先停,找有權限的人確認"]},
 ]
 
 

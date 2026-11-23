@@ -94,7 +94,7 @@
       function render() {
         var lines = [], missing = [];
         CONFIG.output.forEach(function (sec) {
-          if (sec.text) { lines.push(sec.text); return; }
+          if (sec.text) { lines.push(sec.text, ''); return; }
           var parts = sec.fields.map(function (id) {
             var f = CONFIG.byId[id], v = val(id);
             if (!v && f.required) missing.push(f.label);

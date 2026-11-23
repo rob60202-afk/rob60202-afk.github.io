@@ -26,7 +26,19 @@
 
 ## 60 秒短片腳本
 
-- [field-stories-batch1.md](field-stories-batch1.md):第一批 5 集。
+- [field-stories-batch1.md](field-stories-batch1.md):第一批 5 集(已完成動畫)。
+- [field-stories-batch2.md](field-stories-batch2.md):第二批 5 集(第 6–10 集)。
+- [field-stories-batch3.md](field-stories-batch3.md):第三批 5 集(第 11–15 集)。
+
+## 上架與頻道
+
+- [channel-kit.md](channel-kit.md):頻道名稱、簡介、播放清單、第一個月排程。
+- [upload-batch1.md](upload-batch1.md)、[upload-batch2.md](upload-batch2.md):各集標題、說明、標籤、置頂留言。
+- [subtitles/](subtitles/):各集字幕檔。
+
+## 搭配的免費工具
+
+每一集都搭配一個工具,放在網站的 `tools/`,總覽頁是 `tools/index.html`。工具內容寫在 `tools/build_tools.py`,改完重跑即可產生網頁與 Excel。
 
 ## 使用規則
 
