@@ -389,8 +389,8 @@
     const hope = t >= A[1] + 1.75 && t < E[1];
     // 左邊的工班:鎖下面那排管
     const wb = Math.sin(t * 15 + 1) * 12;
-    Ch.person(ctx, { x: 178, y: GROUND, s: 1.02, pose: 'stand', style: CAST.crewB, handR: hand(178, GROUND, 1.02, 1, 258 + wb * 0.4, 1050), eyes: 'normal', mouth: 'flat', brows: 'determined', look: 0.8, lookY: 0.3, sweat: 1, blush: 0.5, blink: blink(t, 0.7), seed: 520 });
-    wrench(ctx, 258 + wb * 0.4, 1050, -0.3 + wb * 0.02, 0.95);
+    Ch.person(ctx, { x: 236, y: GROUND, s: 1.02, pose: 'stand', style: CAST.crewB, handR: hand(236, GROUND, 1.02, 1, 322 + wb * 0.4, 1072), eyes: 'normal', mouth: 'flat', brows: 'determined', look: 0.8, lookY: 0.3, sweat: 1, blush: 0.5, blink: blink(t, 0.7), seed: 520 });
+    wrench(ctx, 322 + wb * 0.4, 1072, 0.6 + wb * 0.02, 0.95);
     // 阿樹:在工作梯上鎖剛裝上去的那一段
     stepLadder(ctx, LADX);
     const wob = Math.sin(t * 17) * 13, hx = 552 + wob * 0.5, hy = 742;
@@ -398,8 +398,8 @@
     wrench(ctx, hx, hy, 0.02 + wob * 0.02, 1.05);
     // 右邊的工班:也在鎖下面那排管
     const wa = Math.sin(t * 16 + 2.3) * 12;
-    Ch.person(ctx, { x: 800, y: GROUND, s: 1.02, sx: -1, pose: 'stand', style: CAST.crewA, handR: hand(800, GROUND, 1.02, -1, 722 + wa * 0.4, 1050), eyes: 'normal', mouth: 'o', brows: 'determined', look: 0.8, lookY: 0.3, sweat: 1, blush: 0.5, blink: blink(t, 0.4), seed: 560 });
-    wrench(ctx, 722 + wa * 0.4, 1050, 0.3 + wa * 0.02, 0.95);
+    Ch.person(ctx, { x: 784, y: GROUND, s: 1.02, sx: -1, pose: 'stand', style: CAST.crewA, handR: hand(784, GROUND, 1.02, -1, 698 + wa * 0.4, 1072), eyes: 'normal', mouth: 'o', brows: 'determined', look: 0.8, lookY: 0.3, sweat: 1, blush: 0.5, blink: blink(t, 0.4), seed: 560 });
+    wrench(ctx, 698 + wa * 0.4, 1072, -0.6 + wa * 0.02, 0.95);
     for (let k = 0; k < 2; k++) { const q = t - ev.built[k]; if (q >= 0 && q < 0.28) burst(ctx, RB[2], RY, 30 + q * 130, 58 + q * 130, 1 - q / 0.28, 6, RED, 8); }
     // 時鐘:越轉越快
     const dt = Math.max(0, t - ev.night), hours = 19 + 1.2 * dt + 0.42 * dt * dt, speed = 1.2 + 0.84 * dt;
@@ -488,7 +488,7 @@
       eyes: day >= 3 ? 'wide' : 'normal', mouth: nerv ? 'wavy' : 'flat', brows: 'worried', look: nerv && Math.sin(t * 2.2) > 0 ? 0.9 : 0.7, lookY: nerv && Math.sin(t * 2.2) > 0 ? 0.2 : -0.7,
       sweat: 0.5 + 0.25 * day, blush: 0.5, blink: blink(t, 0.2), seed: 400 });
     wrench(ctx, hx, hy, 0.02 + wob * 0.02, 1.05);
-    const POS = [[870, 1.14], [810, 1.2], [752, 1.26]], [px, ps] = POS[day - 1];
+    const POS = [[826, 1.12], [786, 1.18], [750, 1.25]], [px, ps] = POS[day - 1];
     Ch.person(ctx, { x: px, y: GROUND, s: ps, sx: -1, pose: 'stand', style: CAST.clientSite, crossArms: true, seed: 440,
       eyes: 'normal', mouth: 'flat', brows: 'determined', look: 0.7, lookY: -0.4, headRot: day === 2 ? -0.05 : 0.02, blink: blink(t, 0.45) });
     const fl = clamp(1 - (t - td) / 0.14); // 換日的一下閃白
@@ -596,7 +596,7 @@
   const fromW = (x, y) => [540 + (x - 540) / ZR, GROUND + (y - ZFY) / ZR]; // 畫面 → 場景
   function report(ctx, t) {
     const nCards = ev.cards.filter((c) => t >= c).length, split = ease.inOutCubic(clamp((t - ev.opts) / 0.42)), picked = t >= ev.pick;
-    const SX = 300, SS = 1.0, CX = 830, CS = 1.05, talking = t >= A[7] && t < E[7];
+    const SX = 440, SS = 1.0, CX = 830, CS = 1.05, talking = t >= A[7] && t < E[7];
     const cur = nCards ? nCards - 1 : -1;
     let so, co;
     zoom(ctx, 540, GROUND, ZR, () => {

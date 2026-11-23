@@ -29,7 +29,7 @@ for (let k = 0; k < 9; k++) fx.addMono(I.scribble(0.18), ev.night + 0.4 + k * 0.
 ev.built.forEach((t, k) => { clank(t, 1 + k * 0.08, 0.34); clank(t + 0.16, 1.1 + k * 0.08, 0.22); });
 // 3:一週後,業主走進來,發現了
 fx.addMono(I.paperFwip(1.2), ev.week, 0.2); fx.addMono(I.pop(1300), ev.week + 0.05, 0.25);
-for (let k = 0; k < 4; k++) step(ev.walk + 0.15 + k * 0.3, 0.2);
+[0, 0.6, 1.2].forEach((d) => step(ev.walk + d, 0.2));                         // 業主的腳步(與畫面的步伐對齊)
 { // 刺耳的一記:不和諧的銅管短奏 + 定音鼓 + 高音金屬
   const t = ev.discover;
   for (const n of ['G#4', 'C#5', 'D5']) { const b = I.brassNote(m(n), 0.32, { stab: true, bright: 1.3 }); fx.addStereo(b.L, b.R, t, 0.32); verb.addStereo(b.L, b.R, t, 0.12); }
@@ -50,7 +50,7 @@ fx.addMono(I.bell(3100, 0.05, 1.2, 2.4), ev.rest + 0.5, 0.08); fx.addMono(I.wood
 fx.addMono(I.pop(1700), ev.find, 0.25);
 ev.knock.forEach((t) => { fx.addMono(I.thud(150, 0.06), t, 0.7); fx.addMono(I.woodTick(0.42), t, 0.35); });
 fx.addMono(I.noiseSweep(0.45, 380, 900, { q: 0.9, pink: true }), ev.enter, 0.14);
-for (let k = 0; k < 4; k++) step(ev.enter + 0.25 + k * 0.3, 0.16);
+[0.05, 0.9].forEach((d) => step(ev.enter + d, 0.16));
 // 8:四張卡片,每張一聲輕柔的鐘聲
 ev.cards.forEach((t, k) => { chime([['F5', 'A5'], ['G5', 'C6'], ['A5', 'D6'], ['C6', 'F6']][k], t, 0.07, 0.22, 1.5); fx.addMono(I.paperFwip(1.15), t - 0.04, 0.14); });
 // 9:分成兩個方案、點頭、指著第二個、打勾

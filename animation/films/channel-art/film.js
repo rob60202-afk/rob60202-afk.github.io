@@ -119,7 +119,7 @@
 
     // 師傅在左、阿樹在右;師傅左右翻過來,兩頂帽簷都朝外,中間留給兩張臉
     const s = 2.5;
-    const mo = { x: 372, y: 466 - HEAD_Y * s, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: 0.05, look: 0 };
+    const mo = { x: 372, y: 466 - HEAD_Y * s, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.05, look: 0 };
     const so = { x: 706, y: 494 - HEAD_Y * s, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: v === 3 ? 'happy' : 'normal', mouth: 'grin', brows: 'up', blush: 0.65, headRot: -0.05, look: -0.15 };
     // 師傅的右手繞到阿樹背後,搭在阿樹另一邊的肩膀上
     const bwS = BW.slim, sShoulder = world(so, 60 * bwS + 4, -326);
@@ -166,18 +166,19 @@
     G.rrect(ctx, bx0 + 14, by0 + 14, bx1 - bx0 - 28, by1 - by0 - 28, 12, { fill: null, stroke: 'rgba(244,242,237,0.20)', lw: 2.5, seed: 1502, second: false, amp: 0.5 });
     for (const [px, py] of [[bx0 + 30, by0 + 30], [bx1 - 30, by0 + 30], [bx0 + 30, by1 - 30], [bx1 - 30, by1 - 30]]) G.ellipse(ctx, px, py, 7, 7, { fill: '#8E99A3', lw: 2.5, seed: 1503 + px, amp: 0.3 });
     const cx = (bx0 + bx1) / 2, inner = bx1 - bx0 - 90;
-    const big = fitSize(ctx, '每一集,一個現場教訓', inner, 74);
-    richLine(ctx, [['每一集,一個', PAPER], ['現場教訓', ACID]], cx, by0 + 40 + big * 0.86, big);
-    G.line(ctx, [[cx - 70, by0 + 40 + big + 26], [cx + 70, by0 + 40 + big + 26]], { color: ACID, lw: 5, seed: 1510, amp: 0.4 });
-    const small = 40;
-    richLine(ctx, [['報價', PAPER], ['・', ACID], ['品質', PAPER], ['・', ACID], ['工安', PAPER], ['・', ACID], ['管理', PAPER]], cx, by1 - 40 - small * 1.25 - 14, small);
-    richLine(ctx, [['免費工具在每支影片的說明欄', '#C9D3DC']], cx, by1 - 40, small);
+    // 標語一行(手機上約 25px 高);小字兩行(約 15px):「|」改成換行
+    const big = fitSize(ctx, '每一集,一個現場教訓', inner, 74), small = 44;
+    const yBig = by0 + 34 + big * 0.86, ySmall2 = by1 - 34, ySmall1 = ySmall2 - small * 1.32;
+    richLine(ctx, [['每一集,一個', PAPER], ['現場教訓', ACID]], cx, yBig, big);
+    G.line(ctx, [[cx - 70, yBig + 26], [cx + 70, yBig + 26]], { color: ACID, lw: 5, seed: 1510, amp: 0.4 });
+    richLine(ctx, [['報價', PAPER], ['・', ACID], ['品質', PAPER], ['・', ACID], ['工安', PAPER], ['・', ACID], ['管理', PAPER]], cx, ySmall1, small);
+    richLine(ctx, [['免費工具在每支影片的說明欄', '#C9D3DC']], cx, ySmall2, small);
 
     // 角色
     const s = 0.95;
     // 師傅左右翻過來:比讚的手在外側(不被阿樹擋住),帽簷朝外
-    const mo = { x: 502, y: 872, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.03, look: -0.2 };
-    const so = { x: 668, y: 884, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: 'grin', brows: 'up', blush: 0.65, look: -0.2 };
+    const mo = { x: 514, y: 872, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.03, look: -0.2 };
+    const so = { x: 678, y: 884, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: 'grin', brows: 'up', blush: 0.65, look: -0.2 };
     // 阿樹雙手拿著檢核表(各集說明欄的免費工具)
     const cbx = so.x + 4, cby = so.y - 252 * s, cbw = 112 * s, cbh = 136 * s;
     so.handL = hand(so.x, so.y, s, 1, cbx - cbw / 2 + 6, cby + cbh / 2 - 22);
@@ -208,50 +209,68 @@
       for (const sd of [-1, 1]) G.line(ctx, [[sd * 12, -40], [sd * 42, -24]], { lw: 7, seed: o.seed + 27 + sd, color: o.style.hair }); // 眉毛重畫在眼白上面
     });
   }
-  function shockLines(ctx, x, y, r0, r1, seed, color = INK) {
-    for (const [a, l] of [[-2.55, 1], [-2.2, 0.8], [-0.95, 0.8], [-0.6, 1]]) G.line(ctx, [[x + Math.cos(a) * r0, y + Math.sin(a) * r0], [x + Math.cos(a) * r0 * l + Math.cos(a) * (r1 - r0) * l, y + Math.sin(a) * r0 * l + Math.sin(a) * (r1 - r0) * l]], { color, lw: 9, seed: seed + Math.round(a * 10) });
+  function shockLines(ctx, x, y, r0, r1, degs, seed, color = INK) { // 頭頂冒出來的「嚇到」短線
+    for (const d of degs) { const a = d * Math.PI / 180; G.line(ctx, [[x + Math.cos(a) * r0, y + Math.sin(a) * r0], [x + Math.cos(a) * r1, y + Math.sin(a) * r1]], { color, lw: 10, seed: seed + d }); }
   }
   function bigText(ctx, str, x, y, size, fill, { line = NAVY, lw = 30, shadow = true, align = 'left', fam = CJK } = {}) {
     if (shadow) G.text(ctx, str, x + size * 0.05, y + size * 0.06, { size, fam, weight: 800, color: line, align, boil: 0, stroke: line, strokeW: lw });
     G.text(ctx, str, x, y, { size, fam, weight: 800, color: fill, align, boil: 0, stroke: line, strokeW: lw });
   }
+  function shockMouth(ctx, o) { // 嚇到張大的嘴(蓋在引擎畫的小 o 上)
+    onHead(ctx, o, () => {
+      G.ellipse(ctx, 0, 47, 20, 27, { fill: '#3A1D1A', lw: 4, seed: 731 });
+      ctx.save(); ctx.beginPath(); ctx.ellipse(0, 47, 18, 25, 0, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#E8718D'; ctx.beginPath(); ctx.ellipse(0, 72, 15, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+  }
+  // 從下往上看的高牆:柱子往上收、牆板接縫越往上越密、管線又小又淡(很高、很遠)
+  function tallRoom(ctx, { VX = 960, VY = -3200, top = 52 } = {}) {
+    fillRect(ctx, 0, 0, W, H, lin(ctx, 0, 0, 0, H, [[0, '#9EACB8'], [0.45, '#C6D0D9'], [1, '#E3E9EE']]));
+    const at = (bx, y) => VX + (bx - VX) * (VY - y) / (VY - H); // 地面上 x = bx 的鉛直線,到高度 y 時的 x
+    let y = H + 30, gap = 210, k = 0;
+    while (y > top + 24) { G.line(ctx, [[-20, y], [W + 20, y]], { color: '#8D9AA6', lw: 3.5, seed: 1690 + k, alpha: 0.55 }); y -= gap; gap *= 0.8; k++; }
+    for (const bx of [-40, 760, 1560, 2360]) {
+      const w0 = 118;
+      G.poly(ctx, [[bx, H + 30], [bx + w0, H + 30], [at(bx + w0, top), top], [at(bx, top), top]], { fill: '#AEB9C3', lw: 5, seed: 1701 + bx, step: 40 });
+      G.line(ctx, [[bx + 16, H], [at(bx + 16, top + 10), top + 10]], { color: '#FFFFFF', lw: 5, seed: 1705 + bx, alpha: 0.35 });
+    }
+    // 越高越暗(往墨色收),亮的管線才跳得出來
+    fillRect(ctx, -10, -10, W + 20, 660, lin(ctx, 0, 0, 0, 650, [[0, 'rgba(10,20,33,0.94)'], [0.42, 'rgba(10,20,33,0.6)'], [1, 'rgba(10,20,33,0)']]));
+    // 天花板、吊燈、管線
+    fillRect(ctx, -10, -10, W + 20, top + 10, '#1B2733');
+    G.line(ctx, [[-20, top], [W + 20, top]], { color: '#05090F', lw: 5, seed: 1720 });
+    for (const lx of [420, 1180]) {
+      fillRect(ctx, lx - 380, top, 760, 420, rad(ctx, lx, top + 120, 10, 380, [[0, 'rgba(255,236,190,0.30)'], [1, 'rgba(255,236,190,0)']]));
+      G.line(ctx, [[lx, top], [lx, top + 196]], { color: '#5C6470', lw: 4, seed: 1721 + lx });
+      G.poly(ctx, [[lx - 46, top + 236], [lx - 22, top + 196], [lx + 22, top + 196], [lx + 46, top + 236]], { fill: '#5C6470', lw: 4, seed: 1722 + lx, step: 20 });
+      G.ellipse(ctx, lx, top + 238, 40, 10, { fill: '#FFF3CF', lw: 3, seed: 1723 + lx });
+    }
+    pipeRack(ctx, -30, W + 30, top + 50, { th: 22, gap: 32, rods: [200, 600, 1000, 1400, 1800], seed: 1730, ceil: top });
+  }
   function thumb(ctx, t, v) {
-    // 牆:往上收的透視(從地面往上看,天花板很高)
-    fillRect(ctx, 0, 0, W, H, lin(ctx, 0, 0, 0, H, [[0, '#9FADB9'], [0.35, '#C5D0D9'], [1, '#E2E8ED']]));
-    const VX = 1500, VY = -2600; // 消失點(畫面上方很遠)
-    for (const bx of [-260, 330, 1000, 1720, 2300]) { // 往上收的柱子
-      const w0 = 120, k = (0 - H) / (VY - H), xt0 = bx + (VX - bx) * k, xt1 = bx + w0 + (VX - bx - w0) * k;
-      G.poly(ctx, [[bx, H + 20], [bx + w0, H + 20], [xt1, 0], [xt0, 0]], { fill: '#AEB9C3', lw: 5, seed: 1701 + bx, step: 40 });
-    }
-    // 天花板與很高的管線(小、遠)
-    fillRect(ctx, -10, -10, W + 20, 64, lin(ctx, 0, 0, 0, 54, [[0, '#3E4855'], [1, '#5C6672']]));
-    G.line(ctx, [[-20, 54], [W + 20, 54]], { color: INK, lw: 5, seed: 1720 });
-    pipeRack(ctx, -30, W + 30, 112, { th: 24, gap: 34, rods: [120, 520, 920, 1320, 1720], seed: 1730, ceil: 54 });
-    G.rrect(ctx, -30, 262, W + 60, 18, 3, { fill: '#8E99A3', lw: 4, seed: 1760 }); // 電纜架
-    for (let x = 20; x < W; x += 60) G.line(ctx, [[x, 264], [x, 278]], { color: '#5C6470', lw: 3, seed: 1761 + x });
-    // 管線的高度:尺規(由地面拉到管線)
-    if (v !== 2) {
-      const rx = 1888, y0 = 156, y1 = H - 10;
-      stroke(ctx, [[rx, y0], [rx, y1]], RED, 7, 'butt');
-      for (const [y, d] of [[y0, 1], [y1, -1]]) { G.poly(ctx, [[rx, y], [rx - 16, y + d * 30], [rx + 16, y + d * 30]], { fill: RED, lw: 0, seed: 1770 + y, step: 30 }); stroke(ctx, [[rx - 26, y], [rx + 26, y]], RED, 5); }
-    }
-
+    tallRoom(ctx);
+    // 紅色虛線圈:要施工的管線在那麼高的地方(各集標示問題的畫法)
+    ctx.save(); ctx.strokeStyle = '#FF5A3C'; ctx.lineWidth = 11; ctx.setLineDash([30, 18]); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.ellipse(1330, 152, 300, 98, -0.03, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     // 角色
-    const sS = 1.95, sM = 1.8;
-    const so = { x: 1235, y: 640 - HEAD_Y * sS, s: sS, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'wide', mouth: 'open', brows: 'worried', sweat: 1, blush: 0.25, look: 0, lookY: -1 };
-    so.handL = [-64, -366]; so.handR = [64, -366]; // 雙手摀著臉頰
-    const mo = { x: 1660, y: 600 - HEAD_Y * sM, s: sM, sx: -1, pose: 'stand', style: CAST.master, seed: 440, gesture: 'pointUp', eyes: 'normal', mouth: 'flat', brows: 'neutral', look: 0.75, lookY: 0.1, blush: 0.3 };
+    const sS = 1.95, sM = 1.78;
+    const so = { x: 1215, y: 652 - HEAD_Y * sS, s: sS, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'wide', mouth: 'o', brows: 'worried', sweat: 1, blush: 0.2, look: 0, lookY: -1 };
+    so.handL = [-55, -356]; so.handR = [55, -356]; // 雙手捧著臉頰
+    const mo = { x: 1638, y: 612 - HEAD_Y * sM, s: sM, sx: -1, pose: 'stand', style: CAST.master, seed: 440, gesture: 'pointUp', eyes: 'normal', mouth: 'flat', brows: 'neutral', look: 0.75, lookY: 0.1, blush: 0.3 };
     Ch.person(ctx, mo);
     Ch.person(ctx, so);
     eyesUp(ctx, so);
+    shockMouth(ctx, so);
     const hs = headAt(so);
-    shockLines(ctx, hs.x, hs.y - 30, 170 * sS / 1.95 + 60, 250, 1780);
+    shockLines(ctx, hs.x, hs.y, 212, 274, [-160, -130, -100, -70], 1780); // 右邊是師傅舉起的手臂,不畫
 
-    // 大字
-    const L1 = '漏一行', L2 = '倒貼18萬';
-    const size2 = fitSize(ctx, L2, 860, 230), size1 = Math.min(size2 * 1.0, 250);
-    if (v === 1) { bigText(ctx, L1, 70, 380, size1, '#FFFFFF'); bigText(ctx, L2, 70, 380 + size2 * 1.18, size2, '#FFD84A'); }
-    else { bigText(ctx, L1, 70, 380, size1, '#FFFFFF'); bigText(ctx, L2, 70, 380 + size2 * 1.18, size2, '#FF5A3C'); }
+    // 大字(左下;上方留給天花板)
+    const L1 = '漏一行', L2 = '倒貼18萬', x0 = 64;
+    const size2 = fitSize(ctx, L2, 880, 236), size1 = size2;
+    const y2 = H - 78, y1 = y2 - size2 * 1.12;
+    bigText(ctx, L1, x0, y1, size1, '#FFFFFF');
+    bigText(ctx, L2, x0, y2, size2, v === 1 ? '#FFD84A' : '#FF5A3C');
   }
 
   const PIECES = S.PIECES;
