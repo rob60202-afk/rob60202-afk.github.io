@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="操作閥件前、操作中與復歸後的確認清單,附閥件操作紀錄 Excel。誰關的誰開,關了要掛牌,做完要復原。">
+  <meta name="description" content="操作閥件前、操作中與復歸後的確認清單,附閥件操作紀錄 Excel。誰關的誰開,動了就掛牌,做完要復原。">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="現場工具箱">
   <meta property="og:title" content="閥位復歸確認表">
-  <meta property="og:description" content="操作閥件前、操作中與復歸後的確認清單,附閥件操作紀錄 Excel。誰關的誰開,關了要掛牌,做完要復原。">
+  <meta property="og:description" content="操作閥件前、操作中與復歸後的確認清單,附閥件操作紀錄 Excel。誰關的誰開,動了就掛牌,做完要復原。">
   <meta property="og:url" content="https://rob60202-afk.github.io/tools/valve-restore/">
   <meta property="og:image" content="https://rob60202-afk.github.io/tools/valve-restore/og.png">
   <meta property="og:image:width" content="1200">
@@ -44,6 +44,7 @@
     section.group { margin: 26px 0; }
     section.group h2 { font-size: 1.15rem; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
     section.group h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+    section.group h2 em { font-style: normal; font-size: .76rem; font-weight: 700; color: #6b5300; background: #fff3c4; border-radius: 99px; padding: 2px 9px; margin-left: 8px; white-space: nowrap; vertical-align: 2px; }
     .item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: start; }
     .item[data-state="no"] { border-color: var(--no); box-shadow: inset 4px 0 0 var(--no); }
     .item[data-state="yes"] { box-shadow: inset 4px 0 0 var(--yes); }
@@ -98,14 +99,14 @@
   <header class="top shell">
     <a class="back" href="../">← 全部工具</a>
     <h1>閥位復歸確認表</h1>
-    <p class="lead">誰關的誰開。關了要掛牌,做完要復原。這張表讓每一顆動過的閥都有紀錄,不靠記憶。</p>
-    <div class="rule"><strong>這張表的用法:</strong><ol><li>操作閥件之前先填「操作前」;每關一顆,就在 Excel 的操作紀錄記一筆。</li><li>復歸時照紀錄逐顆核對,不靠記憶。</li><li>隔離、上鎖掛牌與復歸順序依廠規與作業許可辦理。</li></ol></div>
+    <p class="lead">誰關的誰開。動了就掛牌,做完要復原。這張表讓每一顆動過的閥都有紀錄,不靠記憶。</p>
+    <div class="rule"><strong>這張表的用法:</strong><ol><li>操作閥件之前先填「操作前」,有一項是「無」就先不要動閥。每動一顆閥(關或開),就在 Excel 的操作紀錄記一筆。</li><li>復歸時照紀錄逐顆核對,不靠記憶。運轉中系統的閥由誰操作,依廠規;不能自己開回去的,請使用單位操作。</li><li>隔離、上鎖掛牌與復歸順序依廠規與作業許可辦理。本表是自我確認,不能取代作業許可。</li></ol></div>
   </header>
 
   <div class="bar" role="status" aria-live="polite">
     <div class="shell">
       <div class="meter" aria-hidden="true"><i id="meter"></i></div>
-      <div class="count">已確認 <b id="done">0</b> / <span id="total">0</span>,待處理 <b id="open">0</b></div>
+      <div class="count">已填 <b id="done">0</b> / <span id="total">0</span>,待處理 <b id="open">0</b></div>
     </div>
   </div>
 
@@ -129,7 +130,7 @@
     (function () {
       var KEY = 'valve-restore-v1';
       var LABEL = { yes: '有', no: '無', na: '不適用' };
-      var PLAN = {"": "還沒決定怎麼處理", "fix": "現在補上", "report": "已回報使用單位", "handover": "已交接給下一班"};
+      var PLAN = {"": "還沒決定怎麼處理", "fix": "現在補上", "report": "已回報使用單位,等回覆再動閥", "handover": "已交接給下一班,紀錄跟著走"};
       var state = {};
       try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
       function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 無法儲存時仍可使用 */ } }
@@ -144,6 +145,7 @@
         var h = document.createElement('h2');
         h.innerHTML = '<span></span><small></small>';
         h.firstChild.textContent = g.title;
+        if (g.later) { var lt = document.createElement('em'); lt.textContent = g.later; h.firstChild.appendChild(lt); sec.dataset.later = '1'; }
         sec.appendChild(h);
         g.items.forEach(function (it, ii) {
           total += 1;
@@ -185,7 +187,7 @@
       });
 
       function render() {
-        var done = 0, open = [];
+        var done = 0, open = [], nowTotal = 0, nowDone = 0, hasLater = false;
         document.querySelectorAll('.group').forEach(function (sec, gi) {
           var n = 0, items = sec.querySelectorAll('.item');
           items.forEach(function (row) {
@@ -195,6 +197,7 @@
             row.querySelector('select').value = s.plan || '';
             var settled = s.v === 'yes' || s.v === 'na' || (s.v === 'no' && s.plan);
             if (settled) { n += 1; done += 1; }
+            if (sec.dataset.later) hasLater = true; else { nowTotal += 1; if (settled) nowDone += 1; }
             if (s.v === 'no') open.push({ text: row.querySelector('.text').firstChild.textContent, plan: s.plan || '' });
           });
           sec.querySelector('h2 small').textContent = n + ' / ' + items.length;
@@ -209,8 +212,9 @@
         if (!open.length) {
           var p = document.createElement('p');
           p.style.margin = '0';
-          p.textContent = done === total ? '每一項都確認過了。記得把掛牌數量和紀錄再對一次。' : '目前沒有標成「無」的項目。還有 ' + (total - done) + ' 項沒填。';
-          if (done === total) p.className = 'ok';
+          var startOk = hasLater && done < total && nowDone === nowTotal;
+          p.textContent = done === total ? '每一項都確認過了。記得把掛牌數量和紀錄再對一次。' : startOk ? '操作前與操作中都確認過了。復歸時照紀錄逐顆核對,再填「三、復歸」。' : '目前沒有標成「無」的項目。還有 ' + (total - done) + ' 項沒填。';
+          if (done === total || startOk) p.className = 'ok';
           box.appendChild(p);
           return;
         }

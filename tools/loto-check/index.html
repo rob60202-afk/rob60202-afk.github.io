@@ -44,6 +44,7 @@
     section.group { margin: 26px 0; }
     section.group h2 { font-size: 1.15rem; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
     section.group h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+    section.group h2 em { font-style: normal; font-size: .76rem; font-weight: 700; color: #6b5300; background: #fff3c4; border-radius: 99px; padding: 2px 9px; margin-left: 8px; white-space: nowrap; vertical-align: 2px; }
     .item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: start; }
     .item[data-state="no"] { border-color: var(--no); box-shadow: inset 4px 0 0 var(--no); }
     .item[data-state="yes"] { box-shadow: inset 4px 0 0 var(--yes); }
@@ -99,13 +100,13 @@
     <a class="back" href="../">← 全部工具</a>
     <h1>上鎖掛牌確認表</h1>
     <p class="lead">上了鎖,還要證明它真的不會動。動手之前,每一項都確認過一次。</p>
-    <div class="rule"><strong>這張表的用法:</strong><ol><li>任何一項選「無」,就不動手。</li><li>試啟動之前,所有人都要離開設備。</li><li>上鎖掛牌的程序、鎖具與授權人員依廠規辦理,本表只是提醒。</li></ol></div>
+    <div class="rule"><strong>這張表的用法:</strong><ol><li>「一」到「四」任何一項選「無」,就不動手。「五、作業中」與「六、解除」到時候再填,不要先勾。</li><li>試啟動之前,所有人都要離開設備。</li><li>上鎖掛牌的程序、鎖具與授權人員依廠規辦理。本表是自我確認,不能取代作業許可。</li></ol></div>
   </header>
 
   <div class="bar" role="status" aria-live="polite">
     <div class="shell">
       <div class="meter" aria-hidden="true"><i id="meter"></i></div>
-      <div class="count">已確認 <b id="done">0</b> / <span id="total">0</span>,待處理 <b id="open">0</b></div>
+      <div class="count">已填 <b id="done">0</b> / <span id="total">0</span>,待處理 <b id="open">0</b></div>
     </div>
   </div>
 
@@ -129,7 +130,7 @@
     (function () {
       var KEY = 'loto-check-v1';
       var LABEL = { yes: '有', no: '無', na: '不適用' };
-      var PLAN = {"": "還沒決定怎麼處理", "fix": "動手前補上", "stop": "今天先不動手", "report": "已回報負責人處理"};
+      var PLAN = {"": "還沒決定怎麼處理", "fix": "動手前補上", "stop": "今天先不動手", "report": "已回報負責人,處理好之前不動手"};
       var state = {};
       try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
       function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 無法儲存時仍可使用 */ } }
@@ -144,6 +145,7 @@
         var h = document.createElement('h2');
         h.innerHTML = '<span></span><small></small>';
         h.firstChild.textContent = g.title;
+        if (g.later) { var lt = document.createElement('em'); lt.textContent = g.later; h.firstChild.appendChild(lt); sec.dataset.later = '1'; }
         sec.appendChild(h);
         g.items.forEach(function (it, ii) {
           total += 1;
@@ -185,7 +187,7 @@
       });
 
       function render() {
-        var done = 0, open = [];
+        var done = 0, open = [], nowTotal = 0, nowDone = 0, hasLater = false;
         document.querySelectorAll('.group').forEach(function (sec, gi) {
           var n = 0, items = sec.querySelectorAll('.item');
           items.forEach(function (row) {
@@ -195,6 +197,7 @@
             row.querySelector('select').value = s.plan || '';
             var settled = s.v === 'yes' || s.v === 'na' || (s.v === 'no' && s.plan);
             if (settled) { n += 1; done += 1; }
+            if (sec.dataset.later) hasLater = true; else { nowTotal += 1; if (settled) nowDone += 1; }
             if (s.v === 'no') open.push({ text: row.querySelector('.text').firstChild.textContent, plan: s.plan || '' });
           });
           sec.querySelector('h2 small').textContent = n + ' / ' + items.length;
@@ -209,8 +212,9 @@
         if (!open.length) {
           var p = document.createElement('p');
           p.style.margin = '0';
-          p.textContent = done === total ? '每一項都確認過了。解除上鎖之前,記得再看最後一段。' : '目前沒有標成「無」的項目。還有 ' + (total - done) + ' 項沒填。';
-          if (done === total) p.className = 'ok';
+          var startOk = hasLater && done < total && nowDone === nowTotal;
+          p.textContent = done === total ? '全部確認完了。下次作業前按「清空重填」。' : startOk ? '動手前的項目都確認過了。作業中與解除上鎖前,再填最後兩段。' : '目前沒有標成「無」的項目。還有 ' + (total - done) + ' 項沒填。';
+          if (done === total || startOk) p.className = 'ok';
           box.appendChild(p);
           return;
         }

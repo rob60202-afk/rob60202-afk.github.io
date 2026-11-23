@@ -38,19 +38,19 @@
  {
   "slug": "daily-safety",
   "title": "每日開工安全確認表",
-  "kicker": "工安 · 檢核表 · 25 項",
+  "kicker": "工安 · 檢核表 · 28 項",
   "line": "逐項勾選,可列印,也有 Excel 版"
  },
  {
   "slug": "valve-restore",
   "title": "閥位復歸確認表",
-  "kicker": "工安 · 檢核表 · 13 項",
+  "kicker": "工安 · 檢核表 · 15 項",
   "line": "逐項勾選,可列印,也有 Excel 版"
  },
  {
   "slug": "confined-space",
   "title": "侷限空間作業前確認表",
-  "kicker": "工安 · 檢核表 · 18 項",
+  "kicker": "工安 · 檢核表 · 20 項",
   "line": "逐項勾選,可列印,也有 Excel 版"
  },
  {
