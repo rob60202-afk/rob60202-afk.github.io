@@ -1,0 +1,98 @@
+[
+ {
+  "slug": "quote-checklist",
+  "title": "報價送出前檢核表",
+  "kicker": "計價與報價 · 檢核表 · 46 項",
+  "line": "逐項勾選,可列印,也有 Excel 版"
+ },
+ {
+  "slug": "variation-log",
+  "title": "工程變更追加紀錄表",
+  "kicker": "計價與報價 · Excel 範本",
+  "line": "公式都寫好了,下載就能用"
+ },
+ {
+  "slug": "cashflow",
+  "title": "專案現金流試算表",
+  "kicker": "計價與報價 · Excel 範本",
+  "line": "公式都寫好了,下載就能用"
+ },
+ {
+  "slug": "subcontractor-compare",
+  "title": "包商比價評估表",
+  "kicker": "計價與報價 · Excel 範本",
+  "line": "公式都寫好了,下載就能用"
+ },
+ {
+  "slug": "completion-check",
+  "title": "完工自主檢查表",
+  "kicker": "品質與施工 · 檢核表 · 27 項",
+  "line": "逐項勾選,可列印,也有 Excel 版"
+ },
+ {
+  "slug": "test-deviation-report",
+  "title": "測試異常說明範本",
+  "kicker": "品質與施工 · 文字產生器",
+  "line": "填完自動產生可以直接傳的文字"
+ },
+ {
+  "slug": "daily-safety",
+  "title": "每日開工安全確認表",
+  "kicker": "工安 · 檢核表 · 25 項",
+  "line": "逐項勾選,可列印,也有 Excel 版"
+ },
+ {
+  "slug": "valve-restore",
+  "title": "閥位復歸確認表",
+  "kicker": "工安 · 檢核表 · 13 項",
+  "line": "逐項勾選,可列印,也有 Excel 版"
+ },
+ {
+  "slug": "confined-space",
+  "title": "侷限空間作業前確認表",
+  "kicker": "工安 · 檢核表 · 18 項",
+  "line": "逐項勾選,可列印,也有 Excel 版"
+ },
+ {
+  "slug": "near-miss-report",
+  "title": "虛驚事件回報範本",
+  "kicker": "工安 · 文字產生器",
+  "line": "填完自動產生可以直接傳的文字"
+ },
+ {
+  "slug": "loto-check",
+  "title": "上鎖掛牌確認表",
+  "kicker": "工安 · 檢核表 · 20 項",
+  "line": "逐項勾選,可列印,也有 Excel 版"
+ },
+ {
+  "slug": "weekly-report",
+  "title": "團隊週報模板",
+  "kicker": "溝通與管理 · Excel 範本",
+  "line": "公式都寫好了,下載就能用"
+ },
+ {
+  "slug": "bad-news-report",
+  "title": "進度落後回報範本",
+  "kicker": "溝通與管理 · 文字產生器",
+  "line": "填完自動產生可以直接傳的文字"
+ },
+ {
+  "slug": "delegation-card",
+  "title": "交辦事項五要素",
+  "kicker": "溝通與管理 · 文字產生器",
+  "line": "填完自動產生可以直接傳的文字"
+ },
+ {
+  "slug": "contact-matrix",
+  "title": "窗口與決策權限表",
+  "kicker": "溝通與管理 · Excel 範本",
+  "line": "公式都寫好了,下載就能用"
+ },
+ {
+  "slug": "",
+  "title": "現場工具箱",
+  "kicker": "報價 · 品質 · 工安 · 管理",
+  "line": "15 個免費工具,搭配工程現場故事"
+ }
+]

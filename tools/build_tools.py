@@ -20,6 +20,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
 TPL = TOOLS / "_templates"
+SITE = "https://rob60202-afk.github.io"  # 工具搬到別的網址時,只改這一行
 
 INK, PAPER, BAND = "0A1421", "F4F2ED", "E7E3D8"
 THIN = Side(style="thin", color="B8B2A6")
@@ -33,6 +34,23 @@ LOCAL_NOTE = "填寫內容只存在你這台裝置的瀏覽器裡,不會上傳�
 
 def esc(s):
     return html.escape(s, quote=True)
+
+
+def og_meta(title, desc, slug=""):
+    """分享到 LINE、Facebook 時顯示的預覽卡片。圖片由 tools/make_og.js 產生。"""
+    url = f"{SITE}/tools/{slug + '/' if slug else ''}"
+    tags = [
+        '<meta property="og:type" content="website">',
+        '<meta property="og:site_name" content="現場工具箱">',
+        f'<meta property="og:title" content="{esc(title)}">',
+        f'<meta property="og:description" content="{esc(desc)}">',
+        f'<meta property="og:url" content="{url}">',
+        f'<meta property="og:image" content="{url}og.png">',
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        '<meta name="twitter:card" content="summary_large_image">',
+    ]
+    return "\n  ".join(tags)
 
 
 def rule_box(title, items, ordered=True):
@@ -128,6 +146,7 @@ def write_checklist_tool(t):
         "PLAN_Q": t.get("plan_q", "這一項怎麼處理:"),
         "PLAN_SHORT": t.get("plan_short", "怎麼處理"),
         "DONE_MSG": t.get("done_msg", "每一項都有著落了。"),
+        "OG": og_meta(t["title"], t["desc"], t["slug"]),
     }
     for k, v in values.items():
         page = page.replace("{{" + k + "}}", v)
@@ -150,6 +169,7 @@ def write_message_tool(t):
         "RULE": rule_box(t["rule_title"], t["rules"]), "TIPS": tips,
         "FOOTER": esc(t["footer"] + LOCAL_NOTE),
         "CONFIG": json.dumps(config, ensure_ascii=False).replace("</", "<\\/"),
+        "OG": og_meta(t["title"], t["desc"], t["slug"]),
     }
     for k, v in values.items():
         page = page.replace("{{" + k + "}}", v)
@@ -1061,6 +1081,7 @@ def excel_page(t):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{esc(t['desc'])}">
+  {og_meta(t['title'], t['desc'], t['slug'])}
   <meta name="theme-color" content="#0a1421">
   <title>{esc(t['title'])}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1133,6 +1154,7 @@ def hub_page(entries):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="工程現場用得上的免費工具:報價檢核、完工自主檢查、每日開工安全確認、變更紀錄、現金流試算、週報與溝通範本。">
+  {og_meta("現場工具箱", "工程現場用得上的免費工具:報價檢核、完工自主檢查、每日開工安全確認、變更紀錄、現金流試算、週報與溝通範本。")}
   <meta name="theme-color" content="#0a1421">
   <title>現場工具箱</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1180,6 +1202,11 @@ def main():
     ep = lambda e: int(re.search(r"第 (\d+) 集", e["episode"]).group(1))
     entries.sort(key=lambda e: (order.get(e["category"], 9), ep(e)))
     hub_page(entries)
+    lines = {"檢核表": "逐項勾選,可列印,也有 Excel 版", "文字產生器": "填完自動產生可以直接傳的文字", "Excel 範本": "公式都寫好了,下載就能用"}
+    og = [{"slug": e["slug"], "title": e["title"], "kicker": f'{e["category"]} · {e["type"]}',
+           "line": next(v for k, v in lines.items() if e["type"].startswith(k))} for e in entries]
+    og.append({"slug": "", "title": "現場工具箱", "kicker": "報價 · 品質 · 工安 · 管理", "line": f"{len(entries)} 個免費工具,搭配工程現場故事"})
+    (TPL / "og.json").write_text(json.dumps(og, ensure_ascii=False, indent=1), encoding="utf-8")
     print("example cashflow:", example_check())
 
 
