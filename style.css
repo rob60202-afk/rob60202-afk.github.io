@@ -142,3 +142,11 @@ button { font: inherit; }
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+.tool-list { display: grid; gap: 16px; }
+.tool-card { display: block; padding: 26px 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); box-shadow: 8px 8px 0 var(--acid); transition: transform .2s; }
+.tool-card:hover, .tool-card:focus-visible { transform: translate(-2px, -2px); }
+.tool-card h3 { margin: 4px 0 8px; font-size: 1.4rem; }
+.tool-card p { margin: 0 0 14px; color: var(--muted); }
+.tool-card .tool-kicker { margin: 0; font-size: .8rem; letter-spacing: .12em; color: var(--ink); font-weight: 700; }
+.tool-card strong { font-weight: 700; }
