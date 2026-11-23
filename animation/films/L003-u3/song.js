@@ -54,7 +54,7 @@ for (let k = 0; k < 4; k++) pop(ev.four + k * 0.09, 1600 + k * 180, 0.2);
 // 中間空兩層(紅框閃)、房子塌掉
 fx.addMono(I.bwomp(), ev.gap + 0.25, 0.16);
 fx.addMono(I.thud(70, 0.3), ev.fall, 0.85); fx.addMono(I.thwack(), ev.fall, 0.2);
-fx.addMono(I.noiseSweep(0.7, 1400, 180, { q: 0.9, pink: true }), ev.fall - 0.05, 0.16);
+fx.addMono(I.noiseSweep(0.7, 1400, 180, { q: 0.9, pink: true }), ev.fall - 0.16, 0.16); // 從開始往下掉就有聲音
 for (let k = 0; k < 7; k++) fx.addMono(I.woodTick(0.5 + U.hash(k, 3) * 0.6), ev.fall + 0.08 + k * 0.07 + U.hash(k, 4) * 0.05, 0.12);
 // 【圖 B】:推進去;一層一層亮起,每個小圖示一個 pop
 whoosh(ev.figB, 0.08); fx.addMono(I.paperFwip(1.1), ev.figB, 0.3);

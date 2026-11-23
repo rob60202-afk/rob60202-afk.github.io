@@ -125,7 +125,8 @@
       hl(2, fadeIn(t, ev.profit, 0.3) * (1 - fadeIn(t, ev.oneLine, 0.3)), '#C7EBC5');
     }
     // 第 4 句:中間空兩層(紅色虛線閃);「塌」:上面兩層掉下來,中間兩層壓扁
-    const c = t >= ev.fall && t < ev.back ? clamp((t - ev.fall) / 0.42) : 0, cb = ease.outBounce(c);
+    const fall0 = ev.fall - 0.42 / 2.75; // 往下掉 0.15 秒,第一次撞到地板剛好在 ev.fall(「塌」這個字、咚的一聲)
+    const c = t >= fall0 && t < ev.back ? clamp((t - fall0) / 0.42) : 0, cb = ease.outBounce(c);
     const midH = lerp(160, 30, cb), drop = 160 - midH, tilt = -0.07 * cb;
     // 下面兩層 + 地面
     stroke(ctx, [[-262, 0], [262, 0]], MK.blue, lw);
@@ -138,7 +139,7 @@
       for (const sd of [-1, 1]) { const P = []; for (let j = 0; j <= 6; j++) P.push([sd * 200 + (j % 2 ? sd * 26 * cb : 0) + sd * 10 * cb, -160 - midH * j / 6]); stroke(ctx, P, MK.blue, lw); }
       const P = []; for (let j = 0; j <= 10; j++) P.push([-200 + 40 * j, -160 - midH * 0.5 + (j % 2 ? -1 : 1) * 10 * cb]); stroke(ctx, P, MK.blue, lw - 1);
     }
-    if (t >= ev.gap && t < ev.fall + 0.05) { // 中間兩層:紅色虛線框閃
+    if (t >= ev.gap && t < fall0 + 0.05) { // 中間兩層:紅色虛線框閃
       const fl = (0.55 + 0.45 * Math.sin((t - ev.gap) * 10)) * fadeIn(t, ev.gap, 0.2);
       ctx.save(); ctx.globalAlpha *= fl; ctx.fillStyle = 'rgba(200,69,47,0.12)'; ctx.fillRect(-192, -312, 384, 144); ctx.setLineDash([16, 10]); ctx.strokeStyle = C.red; ctx.lineWidth = 6; ctx.strokeRect(-192, -312, 384, 144); ctx.restore();
     }
@@ -180,7 +181,7 @@
     ctx.restore();
     // 塌下來的灰塵
     if (c > 0 && t < ev.back) {
-      const d = t - ev.fall - 0.12;
+      const d = t - ev.fall;
       if (d > 0 && d < 0.9) for (let j = 0; j < 9; j++) {
         const sd = j % 2 ? 1 : -1, r = (18 + 10 * (j % 3)) * s * (0.6 + d), x = o.cx + s * sd * (150 + 60 * (j % 4) + 80 * d), y = o.bottom + s * (-170 - 12 * (j % 3) - 30 * d);
         ctx.save(); ctx.globalAlpha *= 0.55 * (1 - d / 0.9); G.ellipse(ctx, x, y, r, r * 0.8, { fill: '#D8D4CC', lw: 2.5, seed: 1800 + j, amp: 0.8 }); ctx.restore();
