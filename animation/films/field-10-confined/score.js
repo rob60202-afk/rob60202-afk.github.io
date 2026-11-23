@@ -94,7 +94,7 @@
   }, Array.from({ length: BARS }, (_, b) => [b, 0, 4, ['Am', 'F', 'C', 'G'][b % 4]]));
   const markers = {
     clock: ev.clock, call: ev.call, torch: ev.torch, on: { t: ev.on, sync: 'a' }, tilt: ev.tilt[0], still: ev.still,
-    drop: ev.drop, rail: ev.rail, step: ev.step, freeze: { t: ev.freeze, sync: 'av' }, reach: ev.reach, grab: { t: ev.grab, sync: 'a' }, pull: ev.pull, back: ev.back,
+    drop: ev.drop, rail: ev.rail, step: ev.step, freeze: { t: ev.freeze, sync: 'v' }, reach: ev.reach, grab: ev.grab, pull: ev.pull, back: ev.back, // 定格:音效刻意放輕壓在旁白底下,只驗畫面;抓住是連續動作,不當同步點
     speak: ev.speak, calm: ev.calm, eye: ev.eye, nose: ev.nose, sign: ev.sign[0], signFull: ev.sign[1],
     radio: ev.radio, shout: ev.shout, report: ev.report, blower: ev.blower, duct: ev.duct, fan: ev.fan, card7: ev.card7,
     mask: ev.mask, maskOn: ev.maskOn, back8: ev.back8, clip: { t: ev.clip, sync: 'a' }, down: ev.down, wide: ev.wide,
