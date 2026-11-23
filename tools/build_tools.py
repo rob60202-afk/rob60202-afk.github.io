@@ -1081,6 +1081,14 @@ EXCEL_TOOLS = [
 ]
 
 
+
+# 手寫的工具頁(不由本程式產生頁面,只列進總覽頁與分享圖)
+STATIC_TOOLS = [
+    {"slug": "purge-cycles", "title": "吹淨次數試算",
+     "desc": "充壓洩壓吹淨要做幾次?輸入錶上的讀數與目標濃度,算出理想情況下最少的次數,以及每做一次還剩多少。",
+     "episode": "長片〈充壓洩壓要做幾次才夠乾淨〉", "category": "品質與施工"},
+]
+
 # ---------------------------------------------------------------- 工具總覽頁與 Excel 頁
 
 def excel_page(t):
@@ -1211,11 +1219,15 @@ def main():
         excel_page(t)
         entries.append({"slug": t["slug"], "title": t["title"], "desc": t["desc"], "episode": t["episode"], "category": t["category"], "type": "Excel 範本"})
         print(f'{t["slug"]}: excel')
+    for t in STATIC_TOOLS:
+        assert (TOOLS / t["slug"] / "index.html").exists(), t["slug"]
+        entries.append({**t, "type": "試算工具"})
+        print(f'{t["slug"]}: static page')
     order = {"計價與報價": 0, "品質與施工": 1, "工安": 2, "溝通與管理": 3}
-    ep = lambda e: int(re.search(r"第 (\d+) 集", e["episode"]).group(1))
+    ep = lambda e: int(m.group(1)) if (m := re.search(r"第 (\d+) 集", e["episode"])) else 100
     entries.sort(key=lambda e: (order.get(e["category"], 9), ep(e)))
     hub_page(entries)
-    lines = {"檢核表": "逐項勾選,可列印,也有 Excel 版", "文字產生器": "填完自動產生可以直接傳的文字", "Excel 範本": "公式都寫好了,下載就能用"}
+    lines = {"檢核表": "逐項勾選,可列印,也有 Excel 版", "文字產生器": "填完自動產生可以直接傳的文字", "Excel 範本": "公式都寫好了,下載就能用", "試算工具": "輸入錶上的讀數,馬上算出來"}
     og = [{"slug": e["slug"], "title": e["title"], "kicker": f'{e["category"]} · {e["type"]}',
            "line": next(v for k, v in lines.items() if e["type"].startswith(k))} for e in entries]
     og.append({"slug": "", "title": "現場工具箱", "kicker": "報價 · 品質 · 工安 · 管理", "line": f"{len(entries)} 個免費工具,搭配工程現場故事"})

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="充壓洩壓吹淨要做幾次?輸入錶上的讀數與目標濃度,算出理想情況下最少的次數,以及每做一次還剩多少。">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="現場工具箱">
+  <meta property="og:title" content="吹淨次數試算">
+  <meta property="og:description" content="充壓洩壓吹淨要做幾次?輸入錶上的讀數與目標濃度,算出理想情況下最少的次數,以及每做一次還剩多少。">
+  <meta property="og:url" content="https://rob60202-afk.github.io/tools/purge-cycles/">
+  <meta property="og:image" content="https://rob60202-afk.github.io/tools/purge-cycles/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0a1421">
+  <title>吹淨次數試算</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink: #0a1421; --muted: #526171; --paper: #f4f2ed; --card: #fff; --acid: #b7f33d; --line: rgba(10, 20, 33, .15); --warn: #c8452f; --ok: #2f7d4a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Noto Sans TC", system-ui, sans-serif; line-height: 1.6; }
+    .shell { width: min(1100px, calc(100% - 32px)); margin-inline: auto; }
+    header { padding: 28px 0 6px; }
+    .back { font-size: .9rem; color: var(--muted); text-decoration: none; }
+    h1 { font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.2; margin: 14px 0 10px; }
+    .lead { color: var(--muted); margin: 0; max-width: 64ch; }
+    .rule { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--warn); border-radius: 10px; padding: 12px 16px; margin: 18px 0; }
+    .rule strong { display: block; margin-bottom: 4px; }
+    .rule ul { margin: 0; padding-left: 1.2em; }
+    .layout { display: grid; gap: 22px; grid-template-columns: 1fr; margin: 10px 0 30px; }
+    @media (min-width: 900px) { .layout { grid-template-columns: 1fr 1.1fr; align-items: start; } .out { position: sticky; top: 16px; } }
+    fieldset { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 14px 16px 8px; margin: 0 0 14px; }
+    legend { font-weight: 700; padding: 0 6px; }
+    label { display: block; font-weight: 500; margin: 0 0 4px; }
+    .hint { display: block; color: var(--muted); font-size: .86rem; font-weight: 400; margin: -2px 0 6px; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    input, select { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); margin-bottom: 12px; }
+    input { width: 100%; }
+    select { min-width: 110px; }
+    input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--acid); outline-offset: 2px; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+    .seg button { font: inherit; padding: 8px 12px; border: 0; background: #fff; color: var(--ink); cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 14px; }
+    .actions button { font: inherit; font-weight: 700; padding: 10px 16px; border-radius: 10px; border: 2px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+    .big { font-size: 2.6rem; font-weight: 700; line-height: 1.1; }
+    .big small { font-size: 1rem; font-weight: 500; color: var(--muted); margin-left: 6px; }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 10px 0 0; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .err { color: var(--warn); font-weight: 700; }
+    .note { color: var(--muted); font-size: .9rem; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child { text-align: left; }
+    tr.hit td { background: #eef8d9; font-weight: 700; }
+    .bar { display: inline-block; height: 8px; background: var(--ink); border-radius: 4px; vertical-align: middle; }
+    footer { color: var(--muted); font-size: .85rem; padding: 6px 0 60px; }
+    @media print { .back, .actions, .seg { display: none; } body { background: #fff; } .out { position: static; } }
+  </style>
+</head>
+<body>
+  <header class="shell">
+    <a class="back" href="../">← 全部工具</a>
+    <h1>吹淨次數試算</h1>
+    <p class="lead">錶歸零,管子不是空的。輸入錶上的讀數和要達到的濃度,算出理想情況下最少要做幾次,以及每做一次還剩多少。</p>
+    <div class="rule">
+      <strong>先看這幾條:</strong>
+      <ul>
+        <li>算出來的是<b>理想情況下的最少次數</b>,偏樂觀。盲管、長支管、同一頭進出,實際會比算的差;合不合格,看量測。</li>
+        <li>要多乾淨、做幾次、怎麼做,依業主的程序書。覺得程序不夠,提出來,不要自己改。</li>
+        <li>不適用毒性、可燃、自燃、腐蝕等危害性氣體,這些要依專門程序。也不適用水氣(水氣會黏在管壁上,比算的慢)。</li>
+        <li>充壓不可以超過這條管線允許的壓力;抽真空要確認每個元件都吃得了真空,並經業主同意。排氣接到業主指定的排放口。</li>
+      </ul>
+    </div>
+  </header>
+  <main class="shell">
+    <div class="layout">
+      <form id="form" autocomplete="off" novalidate>
+        <fieldset>
+          <legend>壓力</legend>
+          <label for="unit">錶的單位</label>
+          <select id="unit">
+            <option value="bar">bar</option>
+            <option value="kgf">kgf/cm²(公斤)</option>
+            <option value="psi">psi</option>
+            <option value="mpa">MPa</option>
+          </select>
+          <label for="hi">充壓到(錶上的讀數)</label>
+          <span class="hint">錶壓。例:片中打到 4。</span>
+          <input id="hi" inputmode="decimal" placeholder="例:4">
+          <label>洩壓的方式</label>
+          <div class="seg" role="group" aria-label="洩壓的方式">
+            <button type="button" data-mode="vent" aria-pressed="true">洩壓到錶上的讀數</button>
+            <button type="button" data-mode="vac" aria-pressed="false">抽真空到絕對壓力</button>
+          </div>
+          <label for="lo" id="lo-label">洩壓到(錶上的讀數)</label>
+          <span class="hint" id="lo-hint">錶壓。放到零就填 0。</span>
+          <input id="lo" inputmode="decimal" placeholder="例:0">
+          <label for="atm">當地大氣壓(bar)</label>
+          <span class="hint">一般填 1.013。片中為了好算用 1。</span>
+          <input id="atm" inputmode="decimal" value="1.013">
+        </fieldset>
+        <fieldset>
+          <legend>濃度</legend>
+          <label for="c0">一開始的濃度(ppm)</label>
+          <span class="hint">不確定就當整條都是空氣:含氧約 21% = 210,000 ppm。</span>
+          <input id="c0" inputmode="decimal" value="210000">
+          <label for="ct">要達到的濃度(ppm)</label>
+          <span class="hint">依業主的程序書。沒有程序書,先問清楚再算。</span>
+          <input id="ct" inputmode="decimal" placeholder="依業主規範">
+          <label for="cp">吹淨用的氣體本身含多少(ppm,選填)</label>
+          <span class="hint">吹淨氣本身的雜質,不可能洗得比它更乾淨。</span>
+          <input id="cp" inputmode="decimal" value="0">
+        </fieldset>
+        <div class="actions">
+          <button type="button" id="example">載入片中範例</button>
+          <button type="button" id="reset">清空重填</button>
+        </div>
+      </form>
+      <section class="out" aria-live="polite">
+        <div class="card" id="result"></div>
+        <div class="card"><h2 style="margin:0 0 8px;font-size:1.05rem">每做一次,還剩多少</h2><div id="table"></div></div>
+        <p class="note">算法:每做一次,剩下的比例 = 洩壓後的絕對壓力 ÷ 充壓後的絕對壓力。絕對壓力 = 錶壓 + 大氣壓。做 n 次以後,剩下的 = 吹淨氣的濃度 + (一開始 − 吹淨氣)× 比例的 n 次方。假設每次都混得很均勻、沒有漏、溫度不變。</p>
+      </section>
+    </div>
+    <footer>本工具是理想情況下的估算,不是規範,也不保證合格。實際的目標、次數與程序,依業主的程序書或氣體供應商的程序;合不合格,以量測為準。填寫內容只存在你這台裝置的瀏覽器裡,不會上傳。</footer>
+  </main>
+  <script>
+    (function () {
+      var KEY = 'purge-cycles-v1';
+      var TO_BAR = { bar: 1, kgf: 0.980665, psi: 0.0689476, mpa: 10 };
+      var ids = ['unit', 'hi', 'lo', 'atm', 'c0', 'ct', 'cp'];
+      var el = {}; ids.forEach(function (k) { el[k] = document.getElementById(k); });
+      var mode = 'vent';
+      try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) { ids.forEach(function (k) { if (saved[k] != null) el[k].value = saved[k]; }); mode = saved.mode || 'vent'; } } catch (e) { /* 沒有儲存也能用 */ }
+      function save() { try { var o = { mode: mode }; ids.forEach(function (k) { o[k] = el[k].value; }); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* 無法儲存時仍可使用 */ } }
+      function num(k) { var v = String(el[k].value).replace(/,/g, '').trim(); return v === '' ? NaN : Number(v); }
+      function fmt(x) {
+        if (!isFinite(x)) return '—';
+        if (x >= 100) return Math.round(x).toLocaleString('en-US');
+        if (x >= 1) return (Math.round(x * 100) / 100).toLocaleString('en-US');
+        if (x >= 0.001) return String(Math.round(x * 10000) / 10000);
+        return x.toExponential(2);
+      }
+      function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.mode === m)); });
+        document.getElementById('lo-label').textContent = m === 'vent' ? '洩壓到(錶上的讀數)' : '抽真空到(絕對壓力,bar)';
+        document.getElementById('lo-hint').textContent = m === 'vent' ? '錶壓。放到零就填 0。' : '已經是絕對壓力,不用再加大氣壓。要用看得到真空的錶,一般壓力錶到零以下只會停在零。';
+      }
+      function render() {
+        save();
+        var out = document.getElementById('result'), tb = document.getElementById('table');
+        var u = TO_BAR[el.unit.value], hi = num('hi'), lo = num('lo'), atm = num('atm'), c0 = num('c0'), ct = num('ct'), cp = num('cp');
+        if (isNaN(cp)) cp = 0;
+        var msg = [];
+        if (isNaN(hi)) msg.push('充壓到多少');
+        if (isNaN(lo)) msg.push(mode === 'vent' ? '洩壓到多少' : '抽真空到多少');
+        if (isNaN(atm)) msg.push('大氣壓');
+        if (isNaN(c0)) msg.push('一開始的濃度');
+        if (isNaN(ct)) msg.push('要達到的濃度');
+        if (msg.length) { out.innerHTML = '<p class="note">還沒填:' + msg.join('、') + '。</p>'; tb.textContent = ''; return; }
+        var pHi = hi * u + atm;
+        var pLo = mode === 'vent' ? lo * u + atm : lo;
+        if (hi < 0 || atm <= 0 || c0 <= 0 || ct <= 0 || cp < 0 || pLo < 0) { out.innerHTML = '<p class="err">數字不可以是負的,大氣壓與濃度要大於零。</p>'; tb.textContent = ''; return; }
+        if (mode === 'vac' && lo >= atm) { out.innerHTML = '<p class="err">抽真空的絕對壓力要比大氣壓小。</p>'; tb.textContent = ''; return; }
+        if (pLo >= pHi) { out.innerHTML = '<p class="err">洩壓後的壓力要比充壓的低,不然每做一次都不會變乾淨。</p>'; tb.textContent = ''; return; }
+        var r = pLo / pHi;
+        var head = '<dl class="kv"><dt>充壓後絕對壓力</dt><dd>' + fmt(pHi) + ' bar</dd><dt>洩壓後絕對壓力</dt><dd>' + fmt(pLo) + ' bar</dd><dt>每做一次剩下</dt><dd>' + fmt(r) + '(' + (r * 100 < 1 ? (r * 100).toFixed(2) : (Math.round(r * 1000) / 10)) + '%)</dd></dl>';
+        if (cp >= ct) {
+          out.innerHTML = '<div class="big err">到不了</div><p>吹淨用的氣體本身就含 ' + fmt(cp) + ' ppm,不可能洗到比它更乾淨的 ' + fmt(ct) + ' ppm。要換更乾淨的氣源,或確認目標。</p>' + head;
+          tb.textContent = ''; return;
+        }
+        if (c0 <= ct) { out.innerHTML = '<div class="big">0 <small>次</small></div><p>一開始就已經比目標乾淨。實際仍以量測為準。</p>' + head; tb.textContent = ''; return; }
+        var n = Math.ceil(Math.log((c0 - cp) / (ct - cp)) / Math.log(1 / r) - 1e-9);
+        var left = function (k) { return cp + (c0 - cp) * Math.pow(r, k); };
+        var gaugeNote = '';
+        if (mode === 'vent') {
+          var rg = (lo * u) / (hi * u);
+          if (rg <= 0) gaugeNote = '<p class="note">如果直接用錶壓算,洩到零會變成「一次就乾淨」,這是錯的:錶上的零,裡面還有一個大氣壓的氣。</p>';
+          else { var ng = Math.ceil(Math.log((c0 - cp) / (ct - cp)) / Math.log(1 / rg) - 1e-9); if (ng < n) gaugeNote = '<p class="note">如果直接用錶壓算,會算成 ' + ng + ' 次,少算了 ' + (n - ng) + ' 次。一定要先加大氣壓。</p>'; }
+        }
+        out.innerHTML = '<div>理想情況下,最少要做</div><div class="big">' + n + ' <small>次</small></div><p>做完 ' + n + ' 次,理想上剩 <b>' + fmt(left(n)) + ' ppm</b>(目標 ' + fmt(ct) + ' ppm)。這是最少的次數,不是保證乾淨。</p>' + head + gaugeNote;
+        var rows = '', show = Math.min(Math.max(n + 2, 4), 40), max = c0;
+        for (var k = 0; k <= show; k++) {
+          var v = left(k), w = Math.max(2, Math.round(120 * Math.log10(Math.max(v, 1e-6) + 1) / Math.log10(max + 1)));
+          rows += '<tr' + (k === n ? ' class="hit"' : '') + '><td>' + (k === 0 ? '一開始' : '第 ' + k + ' 次') + '</td><td>' + fmt(v) + '</td><td><span class="bar" style="width:' + w + 'px"></span></td></tr>';
+        }
+        tb.innerHTML = '<table><thead><tr><th>次數</th><th>剩下(ppm)</th><th>對數長條</th></tr></thead><tbody>' + rows + '</tbody></table><p class="note">長條用對數刻度:每短一截,少一個零。綠色那一列是第一次低於目標。</p>';
+      }
+      document.querySelectorAll('.seg button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); render(); }); });
+      ids.forEach(function (k) { el[k].addEventListener('input', render); el[k].addEventListener('change', render); });
+      document.getElementById('example').addEventListener('click', function () {
+        el.unit.value = 'bar'; el.hi.value = '4'; el.lo.value = '0'; el.atm.value = '1'; el.c0.value = '210000'; el.ct.value = '10'; el.cp.value = '0'; setMode('vent'); render();
+      });
+      document.getElementById('reset').addEventListener('click', function () {
+        el.unit.value = 'bar'; el.hi.value = ''; el.lo.value = ''; el.atm.value = '1.013'; el.c0.value = '210000'; el.ct.value = ''; el.cp.value = '0'; setMode('vent'); render();
+      });
+      setMode(mode); render();
+    })();
+  </script>
+</body>
+</html>
