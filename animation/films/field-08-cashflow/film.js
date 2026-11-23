@@ -42,6 +42,13 @@
     label(ctx, text, 0, size * 0.36, size, color);
     ctx.restore();
   }
+  // 一行字分兩種顏色(例:「賺不賺錢」黑、「看利潤」咖啡);回傳第二段的 x 範圍
+  function twoTone(ctx, a, b, cx, y, size, colA, colB) {
+    const wa = KIT.measure(ctx, a, size), wb = KIT.measure(ctx, b, size), x0 = cx - (wa + wb) / 2;
+    G.text(ctx, a, x0, y, { size, fam: CJK, weight: 800, color: colA, align: 'left', boil: 0 });
+    G.text(ctx, b, x0 + wa, y, { size, fam: CJK, weight: 800, color: colB, align: 'left', boil: 0 });
+    return [x0 + wa, x0 + wa + wb];
+  }
   function coin(ctx, x, y, r, { seed = 1900, spin = 1 } = {}) {
     ctx.save(); ctx.translate(x, y); ctx.scale(Math.max(0.25, spin), 1);
     G.ellipse(ctx, 0, 0, r, r, { fill: GOLD, lw: Math.max(2.5, r * 0.17), seed });
@@ -593,8 +600,7 @@
     KIT.desk(ctx, 40, 1186, 1000, { depth: 34, legs: false, color: '#B07A4E', seed: 122 });
     teapot(ctx, 540, 1170);
     cup(ctx, cupP[0], cupP[1] + (cupDown < 1 ? 0 : 0), 1, 2100); cup(ctx, 650, 1168, 1, 2105);
-    skinDot(ctx, cupP[0] - 2, cupP[1] - 12, 20, CAST.master.skin, 2120);
-    if (point) skinDot(ctx, cupP[0] - 2, cupP[1] - 12, 0.01, CAST.master.skin, 2120);
+    if (!point) skinDot(ctx, cupP[0] - 2, cupP[1] - 12, 20, CAST.master.skin, 2120); // 右手拿著杯子(比手指的時候杯子留在桌上)
     skinDot(ctx, MX - 70, 1162, 20, CAST.master.skin, 2121);
     skinDot(ctx, 650, 1146, 19, CAST.shu.skin, 2122); skinDot(ctx, SX + 70, 1162, 19, CAST.shu.skin, 2123);
     // 字卡:不是賠錢倒的 / 是賺錢時周轉不過來
@@ -649,13 +655,12 @@
     { m: '第5月', pay: '10', cum: -70 }, { m: '第6月', cum: -70 }, { m: '第7月', cum: -70 }, { m: '第8月', recv: '90', cum: 20 },
   ];
   const TB = { x: 70, y: 250, w: 870, row0: 438, rowH: 80 };
-  const COLX = { m: 185, pay: 452, recv: 662, cum: 892 };      // 月份置中,金額靠右
-  const HEADX = { pay: 380, recv: 590, cum: 800 };
-  const NUMS = { minus: '−' };
+  const COLX = { m: 189, pay: 383, recv: 593, cum: 804 };      // 每一欄的中心
+  const MINUS = '−';
   function cashTable(ctx, t) {
     const a = popIn(t, ev.table + 0.05, 0.35);
     if (a <= 0) return;
-    const tPay = (k) => ev.pay + k * 0.24, tRecv = (k) => (k === 7 ? ev.recv + 0.5 : ev.recv + k * 0.05), tCum = (k) => ev.recv + 0.85 + k * 0.07, tWorst = ev.recv + 1.45;
+    const tPay = (k) => ev.pay + k * 0.24, tRecv = (k) => (k === 7 ? ev.recv + 0.5 : ev.recv + k * 0.05), tCum = (k) => ev.cum + k * 0.07;
     ctx.save(); ctx.translate(TB.x + TB.w / 2, TB.y); ctx.scale(a, a); ctx.translate(-(TB.x + TB.w / 2), -TB.y);
     const h = TB.row0 + 8 * TB.rowH + 34 - TB.y;
     KIT.card(ctx, TB.x, TB.y, TB.w, h, { fill: PAPER, seed: 2200 });
@@ -663,13 +668,11 @@
     G.rrect(ctx, 720, TB.y + 34, 196, 54, 12, { fill: '#FFF1C9', lw: 3, seed: 2201 });
     label(ctx, '金額為示意', 818, TB.y + 73, 34, '#8E6444');
     stroke(ctx, [[TB.x + 30, TB.y + 106], [TB.x + TB.w - 30, TB.y + 106]], INK, 4);
-    // 欄名
     const hy = TB.y + 160;
-    label(ctx, '月份', COLX.m, hy, 40, MUTED); label(ctx, '付出', HEADX.pay, hy, 40, RED); label(ctx, '收入', HEADX.recv, hy, 40, DGREEN); label(ctx, '累計', HEADX.cum, hy, 40, INK);
+    label(ctx, '月份', COLX.m, hy, 40, MUTED); label(ctx, '付出', COLX.pay, hy, 40, RED); label(ctx, '收入', COLX.recv, hy, 40, DGREEN); label(ctx, '累計', COLX.cum, hy, 40, INK);
     for (const x of [278, 488, 698]) { ctx.save(); ctx.setLineDash([6, 8]); stroke(ctx, [[x, TB.y + 120], [x, TB.row0 + 8 * TB.rowH]], '#D2C6AC', 2.5); ctx.restore(); }
-    // 第 8 月:收入那一列淡淡的綠
     if (t >= tRecv(7)) { ctx.save(); ctx.globalAlpha *= 0.55 * clamp((t - tRecv(7)) / 0.3); fill(ctx, TB.x + 18, TB.row0 + 7 * TB.rowH + 4, TB.w - 36, TB.rowH - 8, 'rgba(140,224,150,0.6)'); ctx.restore(); }
-    const worst = t >= tWorst ? clamp((t - tWorst) / 0.3) : 0;
+    const worst = t >= ev.worst ? clamp((t - ev.worst) / 0.3) : 0;
     ROWS.forEach((r, k) => {
       const y0 = TB.row0 + k * TB.rowH, base = y0 + 54;
       if (k > 0) { ctx.save(); ctx.setLineDash([6, 8]); stroke(ctx, [[TB.x + 30, y0], [TB.x + TB.w - 30, y0]], '#D2C6AC', 2.5); ctx.restore(); }
@@ -677,26 +680,26 @@
       const cell = (str, x, t0, col, size = 48) => {
         if (t < t0) return;
         const p = ease.outBack(clamp((t - t0) / 0.25));
-        ctx.save(); ctx.translate(x - 30, base - 16); ctx.scale(p, p); ctx.translate(-(x - 30), -(base - 16));
-        G.text(ctx, str, x, base, { size, fam: NUM, weight: 800, color: col, align: 'right', boil: 0 });
+        ctx.save(); ctx.translate(x, base - 16); ctx.scale(p, p); ctx.translate(-x, -(base - 16));
+        G.text(ctx, str, x, base, { size, fam: NUM, weight: 800, color: col, align: 'center', boil: 0 });
         ctx.restore();
       };
-      const dash = (x, t0, fadeOut = 0) => { if (t < t0) return; ctx.save(); ctx.globalAlpha *= clamp((t - t0) / 0.15) * (1 - fadeOut); stroke(ctx, [[x - 50, base - 16], [x - 16, base - 16]], '#C9BFA8', 5); ctx.restore(); };
+      const dash = (x, t0, fadeOut = 0) => { if (t < t0) return; ctx.save(); ctx.globalAlpha *= clamp((t - t0) / 0.15) * (1 - fadeOut); stroke(ctx, [[x - 18, base - 16], [x + 18, base - 16]], '#C9BFA8', 5); ctx.restore(); };
       if (r.pay) cell(r.pay, COLX.pay, tPay(k), RED); else dash(COLX.pay, ev.pay + 1.2 + (k - 5) * 0.06);
       const inWorst = k >= 4 && k <= 6;
       if (r.recv) cell(r.recv, COLX.recv, tRecv(k), DGREEN); else dash(COLX.recv, tRecv(k), inWorst ? worst : 0);
-      cell(r.cum > 0 ? `+${r.cum}` : `${NUMS.minus}${-r.cum}`, COLX.cum, tCum(k), r.cum > 0 ? DGREEN : RED);
+      cell(r.cum > 0 ? `+${r.cum}` : `${MINUS}${-r.cum}`, COLX.cum, tCum(k), r.cum > 0 ? DGREEN : RED);
     });
-    // 最大缺口:第 5–7 月的累計圈起來
+    // 最大缺口:第 5–7 月的累計圈起來(最低的那一格,就是公司要先墊的錢)
     if (worst > 0) {
       const y0 = TB.row0 + 4 * TB.rowH + 4, y1 = TB.row0 + 7 * TB.rowH - 4, k = ease.outBack(worst);
       ctx.save(); ctx.globalAlpha *= clamp(worst * 2);
-      ctx.strokeStyle = RED; ctx.lineWidth = 7; ctx.beginPath(); ctx.roundRect(706, y0, 214, (y1 - y0), 18); ctx.stroke();
+      ctx.strokeStyle = RED; ctx.lineWidth = 7; ctx.beginPath(); ctx.roundRect(704, y0, 202, (y1 - y0), 18); ctx.stroke();
       ctx.restore();
-      ctx.save(); ctx.translate(596, (y0 + y1) / 2); ctx.scale(k, k);
-      G.rrect(ctx, -112, -40, 224, 80, 14, { fill: RED, lw: 4, seed: 2210 });
-      label(ctx, '最大缺口', -6, 15, 42, '#FFFFFF');
-      G.poly(ctx, [[112, -16], [138, 0], [112, 16]], { fill: RED, lw: 3, seed: 2211 });
+      ctx.save(); ctx.translate(574, (y0 + y1) / 2); ctx.scale(k, k);
+      G.rrect(ctx, -104, -38, 208, 76, 14, { fill: RED, lw: 4, seed: 2210 });
+      label(ctx, '最大缺口', 0, 15, 42, '#FFFFFF');
+      G.poly(ctx, [[104, -16], [128, 0], [104, 16]], { fill: RED, lw: 3, seed: 2211 });
       ctx.restore();
     }
     ctx.restore();
@@ -714,14 +717,15 @@
     const a = popIn(t, ev.card, 0.4);
     ctx.save(); ctx.translate(510, 300); ctx.rotate(-0.012); ctx.scale(a, a);
     G.tornPaper(ctx, -424, 0, 848, 430, { fill: PAPER, seed: 801 });
-    label(ctx, '賺不賺錢', -150, 150, 92, INK); label(ctx, '看利潤', 250, 150, 92, '#8E6444');
-    if (t >= ev.line2) { const b = popIn(t, ev.line2, 0.3); ctx.save(); ctx.translate(0, 300); ctx.scale(b, b); label(ctx, '活不活得下去', -128, 30, 84, INK); label(ctx, '看現金', 270, 30, 84, RED); ctx.restore(); }
+    twoTone(ctx, '賺不賺錢', '看利潤', 0, 160, 92, INK, '#8E6444');
+    let under = null;
+    if (t >= ev.line2) { const b = popIn(t, ev.line2, 0.3); ctx.save(); ctx.translate(0, 300); ctx.scale(b, b); under = twoTone(ctx, '活不活得下去', '看現金', 0, 30, 84, INK, RED); ctx.restore(); }
+    if (under && t >= ev.line2 + 0.4) { const u = ease.outCubic(clamp((t - ev.line2 - 0.4) / 0.4)); stroke(ctx, KIT.partial([[under[0], 352], [under[1], 346]], u), RED, 9); }
     ctx.restore();
-    if (t >= ev.line2 + 0.4) { const u = ease.outCubic(clamp((t - ev.line2 - 0.4) / 0.4)); stroke(ctx, KIT.partial([[650, 652], [900, 646]], u), RED, 9); }
     person(ctx, { x: 270, y: 1376, s: 0.98, pose: 'stand', style: CAST.master, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', blush: 0.5, seed: 440 });
     // 阿樹:拿著那張按月收支表
     const o = { x: 735, y: 1376, s: 0.95, pose: 'stand', style: CAST.shu, eyes: 'happy', mouth: 'grin', blush: 0.7, seed: 400 };
-    const tb = [735, 1100 + Math.sin(t * 3) * 4];
+    const tb = [735, 1166 + Math.sin(t * 3) * 4];
     o.handL = hand(o.x, o.y, o.s, 1, tb[0] - 84, tb[1] + 48); o.handR = hand(o.x, o.y, o.s, 1, tb[0] + 84, tb[1] + 48);
     person(ctx, o);
     G.rrect(ctx, tb[0] - 110, tb[1] - 80, 220, 156, 8, { fill: PAPER, lw: 4, seed: 2301 });
