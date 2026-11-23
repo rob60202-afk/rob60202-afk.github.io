@@ -1,14 +1,13 @@
 // 頻道圖像素材:頭像、橫幅、L003 縮圖。每一張都是時間 t 的純函式(t 只用來選要畫哪一張)。
 // 角色造型照抄 field-05-harness 的 CAST,畫法與各集相同。
 (function () {
-  const U = globalThis.U, G = globalThis.G, Ch = globalThis.Ch, Studio = globalThis.Studio, S = globalThis.SCORE;
-  const { clamp, lerp } = U;
+  const G = globalThis.G, Ch = globalThis.Ch, Studio = globalThis.Studio, S = globalThis.SCORE;
   const W = G.W, H = G.H;
   const CJK = '"WenQuanYi Zen Hei", "Noto Sans CJK TC", sans-serif';
   // 網站配色
-  const NAVY = '#0a1421', PAPER = '#f4f2ed', ACID = '#b7f33d', MUTED = '#526171';
+  const NAVY = '#0a1421', PAPER = '#f4f2ed', ACID = '#b7f33d';
   // 各集用的顏色
-  const INK = '#3A2A20', RED = '#C8452F', GREEN = '#3E9B5F', STEEL = '#D9DEE3', YELLOW = '#F2C230', ORANGE = '#F28C28', TUBE = '#8E99A3';
+  const INK = '#3A2A20', GREEN = '#3E9B5F', YELLOW = '#F2C230', ORANGE = '#F28C28', TUBE = '#8E99A3';
 
   // ---------- 角色(與各集相同;進現場一律戴安全帽) ----------
   const SKIN = '#F0C29C';
@@ -26,11 +25,6 @@
   const lin = (ctx, x0, y0, x1, y1, stops) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; };
   const rad = (ctx, x, y, r0, r1, stops) => { const g = ctx.createRadialGradient(x, y, r0, x, y, r1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; };
   const fillRect = (ctx, x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
-  const stroke = (ctx, pts, color, lw, cap = 'round') => {
-    if (pts.length < 2) return;
-    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = cap; ctx.lineJoin = 'round';
-    ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.stroke(); ctx.restore();
-  };
   const hand = (px, py, s, sx, wx, wy) => [(wx - px) / (s * sx), (wy - py) / s]; // 畫面座標 → 角色手的目標
   function world(o, lx, ly) { const r = o.rot || 0, c = Math.cos(r), s = Math.sin(r); return [o.x + o.s * (o.sx || 1) * (lx * c - ly * s), o.y + o.s * (lx * s + ly * c)]; }
   function local(ctx, o, fn) { ctx.save(); ctx.translate(o.x, o.y); ctx.scale(o.s * (o.sx || 1), o.s); ctx.rotate(o.rot || 0); fn(); ctx.restore(); }
@@ -103,49 +97,47 @@
   }
 
   // =====================================================================
-  // 1. 頭像(1:1)。YouTube 會裁成圓形:臉與帽子都放在中央圓的 85% 以內;不放字。
+  // 1. 頭像(1:1)。YouTube 會裁成圓形:兩張臉在圓半徑的 70% 以內,帽簷尖端約 90%(仍在圓內);不放字。
   // =====================================================================
-  function avatar(ctx, t, v) {
-    const C = W / 2;
-    fillRect(ctx, 0, 0, W, H, NAVY);
-    fillRect(ctx, 0, 0, W, H, rad(ctx, C, C - 40, 30, 560, [[0, 'rgba(70,104,140,0.55)'], [0.65, 'rgba(30,52,76,0.35)'], [1, 'rgba(10,20,33,0)']]));
-    if (v === 1) { // 螢光綠圓盤在頭後面
-      G.ellipse(ctx, C, C - 60, 380, 380, { fill: ACID, lw: 0, seed: 1001, amp: 0.6 });
-    } else if (v !== 2) { // 螢光綠圓環
-      ctx.save(); ctx.strokeStyle = ACID; ctx.lineWidth = 22; ctx.beginPath(); ctx.arc(C, C, 496, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-    }
-    // 背景的管架(很淡)
-    if (v === 2) for (let k = 0; k < 3; k++) { ctx.save(); ctx.globalAlpha = 0.16; pipeRun(ctx, -20, W + 20, 210 + k * 70, 34, '#9FB3C8', 1010 + k * 7); ctx.restore(); }
-
-    // 師傅在左、阿樹在右;師傅左右翻過來,兩頂帽簷都朝外,中間留給兩張臉
-    const s = 2.5;
-    const mo = { x: 372, y: 466 - HEAD_Y * s, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.05, look: 0 };
-    const so = { x: 706, y: 494 - HEAD_Y * s, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: v === 3 ? 'happy' : 'normal', mouth: 'grin', brows: 'up', blush: 0.65, headRot: -0.05, look: -0.15 };
-    // 師傅的右手繞到阿樹背後,搭在阿樹另一邊的肩膀上
-    const bwS = BW.slim, sShoulder = world(so, 60 * bwS + 4, -326);
-    mo.handR = hand(mo.x, mo.y, s, -1, sShoulder[0], sShoulder[1]);
-    Ch.person(ctx, mo);
-    Ch.person(ctx, so);
-    // 搭在肩上的手(畫在阿樹上面)
+  // 師傅(左右翻過來,站在阿樹左邊)用靠阿樹那一側的手(他的左手),繞到阿樹背後,搭在阿樹另一邊的肩膀上。
+  // 手臂跟著師傅一起畫(被阿樹擋住),搭在肩上的手等阿樹畫完再補上。
+  function armAround(mo, so) { const p = world(so, 60 * BW.slim + 4, -326); mo.handL = hand(mo.x, mo.y, mo.s, mo.sx || 1, p[0], p[1]); }
+  function handOnShoulder(ctx, mo) {
     local(ctx, mo, () => {
-      const [hx, hy] = mo.handR, sk = CAST.master.skin;
+      const [hx, hy] = mo.handL, sk = CAST.master.skin;
       G.ellipse(ctx, hx - 4, hy + 2, 22, 18, { fill: sk, lw: 4, seed: 470 });
       for (let k = 0; k < 3; k++) G.rrect(ctx, hx - 20 + k * 13, hy + 4, 12, 26, 6, { fill: sk, lw: 3.5, seed: 471 + k });
     });
   }
+  function avatar(ctx) {
+    const C = W / 2;
+    // 墨色底,頭後面稍微亮一點;外圈一道螢光綠(網站的配色)
+    fillRect(ctx, 0, 0, W, H, NAVY);
+    fillRect(ctx, 0, 0, W, H, rad(ctx, C, C - 40, 30, 560, [[0, 'rgba(70,104,140,0.55)'], [0.65, 'rgba(30,52,76,0.35)'], [1, 'rgba(10,20,33,0)']]));
+    ctx.save(); ctx.strokeStyle = ACID; ctx.lineWidth = 22; ctx.beginPath(); ctx.arc(C, C, 496, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    // 師傅在左、阿樹在右;師傅左右翻過來,兩頂帽簷都朝外,中間留給兩張臉
+    const s = 2.5;
+    const mo = { x: 372, y: 466 - HEAD_Y * s, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.05, look: 0 };
+    const so = { x: 706, y: 494 - HEAD_Y * s, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: 'grin', brows: 'up', blush: 0.65, headRot: -0.05, look: -0.15 };
+    armAround(mo, so);
+    Ch.person(ctx, mo);
+    Ch.person(ctx, so);
+    handOnShoulder(ctx, mo);
+  }
 
   // =====================================================================
   // 2. 橫幅(16:9,算成 2560×1440)。所有裝置都看得到的只有正中央 1546×423:
-  //    角色與文字放在裡面;外面只有現場背景(電視才看得到全部)。
+  //    角色的上半身與文字放在裡面(兩人站在地板上,腰以下在安全區下方,只有電視看得到);
+  //    外面只有現場背景。
   // =====================================================================
   const K_B = 1440 / 1080;
   const BS = { x: 960 - 1546 / 2 / K_B, y: 540 - 423 / 2 / K_B, w: 1546 / K_B, h: 423 / K_B }; // 安全區,舞台座標
-  function banner(ctx, t, v) {
+  function banner(ctx) {
     const GB = 812; // 牆與地板的交界
-    // 牆
+    // 牆(柱子放在安全區外,不擋到臉和字)
     fillRect(ctx, 0, 0, W, H, lin(ctx, 0, 0, 0, GB, [[0, '#BFCAD3'], [0.5, '#D6DEE4'], [1, '#E6EBEF']]));
     for (const cx of [70, 1850]) column(ctx, cx, 60, GB, 70, 1101 + cx);
-    for (const cx of [700, 1220]) column(ctx, cx, 60, GB, 56, 1111 + cx);
+    for (const cx of [350, 1570]) column(ctx, cx, 60, GB, 56, 1111 + cx);
     // 天花板
     fillRect(ctx, -10, -10, W + 20, 82, lin(ctx, 0, 0, 0, 72, [[0, '#4A5563'], [1, '#68727F']]));
     G.line(ctx, [[-20, 72], [W + 20, 72]], { color: INK, lw: 5, seed: 1121 });
@@ -167,18 +159,16 @@
     for (const [px, py] of [[bx0 + 30, by0 + 30], [bx1 - 30, by0 + 30], [bx0 + 30, by1 - 30], [bx1 - 30, by1 - 30]]) G.ellipse(ctx, px, py, 7, 7, { fill: '#8E99A3', lw: 2.5, seed: 1503 + px, amp: 0.3 });
     const cx = (bx0 + bx1) / 2, inner = bx1 - bx0 - 90;
     // 標語一行(手機上約 25px 高);小字兩行(約 15px):「|」改成換行
-    const big = fitSize(ctx, '每一集,一個現場教訓', inner, 74), small = 44;
-    const yBig = by0 + 34 + big * 0.86, ySmall2 = by1 - 34, ySmall1 = ySmall2 - small * 1.32;
+    const big = fitSize(ctx, '每一集,一個現場教訓', inner, 74), small = 46;
+    const yBig = by0 + 36 + big * 0.86, ySmall2 = by1 - 34, ySmall1 = ySmall2 - small * 1.3;
     richLine(ctx, [['每一集,一個', PAPER], ['現場教訓', ACID]], cx, yBig, big);
-    G.line(ctx, [[cx - 70, yBig + 26], [cx + 70, yBig + 26]], { color: ACID, lw: 5, seed: 1510, amp: 0.4 });
     richLine(ctx, [['報價', PAPER], ['・', ACID], ['品質', PAPER], ['・', ACID], ['工安', PAPER], ['・', ACID], ['管理', PAPER]], cx, ySmall1, small);
     richLine(ctx, [['免費工具在每支影片的說明欄', '#C9D3DC']], cx, ySmall2, small);
 
-    // 角色
+    // 角色:師傅雙手抱胸笑著(field-05 阿樹扣上掛鉤那一幕的姿勢;手肘不會伸出安全區),阿樹拿著檢核表
     const s = 0.95;
-    // 師傅左右翻過來:比讚的手在外側(不被阿樹擋住),帽簷朝外
-    const mo = { x: 514, y: 872, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, gesture: 'thumbsUp', eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.03, look: -0.2 };
-    const so = { x: 678, y: 884, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: 'grin', brows: 'up', blush: 0.65, look: -0.2 };
+    const mo = { x: 520, y: 872, s, sx: -1, pose: 'stand', style: CAST.master, seed: 440, crossArms: true, eyes: 'happy', mouth: 'smile', brows: 'neutral', blush: 0.45, headRot: -0.04, look: -0.1 };
+    const so = { x: 676, y: 884, s, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: 'grin', brows: 'up', blush: 0.65, headRot: -0.03, look: -0.2 };
     // 阿樹雙手拿著檢核表(各集說明欄的免費工具)
     const cbx = so.x + 4, cby = so.y - 252 * s, cbw = 112 * s, cbh = 136 * s;
     so.handL = hand(so.x, so.y, s, 1, cbx - cbw / 2 + 6, cby + cbh / 2 - 22);
@@ -224,7 +214,7 @@
       ctx.restore();
     });
   }
-  // 從下往上看的高牆:柱子往上收、牆板接縫越往上越密、管線又小又淡(很高、很遠)
+  // 從下往上看的高牆:柱子往上收、牆板接縫越往上越密、越高越暗,管線畫得細小(很高、很遠)
   function tallRoom(ctx, { VX = 960, VY = -3200, top = 52 } = {}) {
     fillRect(ctx, 0, 0, W, H, lin(ctx, 0, 0, 0, H, [[0, '#9EACB8'], [0.45, '#C6D0D9'], [1, '#E3E9EE']]));
     const at = (bx, y) => VX + (bx - VX) * (VY - y) / (VY - H); // 地面上 x = bx 的鉛直線,到高度 y 時的 x
@@ -248,7 +238,7 @@
     }
     pipeRack(ctx, -30, W + 30, top + 50, { th: 22, gap: 32, rods: [200, 600, 1000, 1400, 1800], seed: 1730, ceil: top });
   }
-  function thumb(ctx, t, v) {
+  function thumb(ctx) {
     tallRoom(ctx);
     // 紅色虛線圈:要施工的管線在那麼高的地方(各集標示問題的畫法)
     ctx.save(); ctx.strokeStyle = '#FF5A3C'; ctx.lineWidth = 11; ctx.setLineDash([30, 18]); ctx.lineCap = 'round';
@@ -265,22 +255,21 @@
     const hs = headAt(so);
     shockLines(ctx, hs.x, hs.y, 212, 274, [-160, -130, -100, -70], 1780); // 右邊是師傅舉起的手臂,不畫
 
-    // 大字(左下;上方留給天花板)
+    // 大字(左下;上方留給天花板。右下角會被 YouTube 的影片長度蓋住,不放字)
     const L1 = '漏一行', L2 = '倒貼18萬', x0 = 64;
     const size2 = fitSize(ctx, L2, 880, 236), size1 = size2;
     const y2 = H - 78, y1 = y2 - size2 * 1.12;
     bigText(ctx, L1, x0, y1, size1, '#FFFFFF');
-    bigText(ctx, L2, x0, y2, size2, v === 1 ? '#FFD84A' : '#FF5A3C');
+    bigText(ctx, L2, x0, y2, size2, '#FF5A3C');
   }
 
+  // t 落在哪一段(score.js 的 PIECES),就畫哪一張;紙紋與顆粒比各集淡,縮小後才不會髒
   const PIECES = S.PIECES;
   const which = (t) => (t < PIECES.avatar[1] ? 'avatar' : t < PIECES.banner[1] ? 'banner' : 'thumb');
+  const POST = { avatar: { vignette: 0, grain: 0.02, paper: 0.18 }, banner: { vignette: 0.06, grain: 0.03, paper: 0.3 }, thumb: { vignette: 0.12, grain: 0.03, paper: 0.25 } };
   Studio.film({
-    post: (t) => ({ avatar: { vignette: 0, grain: 0.02, paper: 0.18 }, banner: { vignette: 0.06, grain: 0.03, paper: 0.3 }, thumb: { vignette: 0.12, grain: 0.03, paper: 0.25 } })[which(t)],
+    post: (t) => POST[which(t)],
     fadeOut: 0,
-    draw(ctx, t) {
-      const p = which(t), v = Math.round((t - PIECES[p][0]) * 10) % 10; // 小數點後一位 = 版本(定稿用 .5)
-      ({ avatar, banner, thumb })[p](ctx, t, v);
-    },
+    draw(ctx, t) { ({ avatar, banner, thumb })[which(t)](ctx); },
   });
 })();
