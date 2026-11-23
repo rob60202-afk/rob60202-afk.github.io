@@ -1,0 +1,9 @@
+{
+  "name": "channel-art",
+  "private": true,
+  "description": "YouTube channel art (avatar, banner, L003 thumbnail), drawn in code with the same engine and cast as the episodes.",
+  "scripts": {
+    "stills": "node engine/render.js stills",
+    "build": "bash build.sh"
+  }
+}
