@@ -36,7 +36,7 @@
   const DOOR = [930, 520, 200, BWY - 520];                               // 開著的鐵捲門:外面的新鮮空氣
   const SS = 0.85;                                                       // 全景人物大小
   const TRI = { head: [MC, 446], L: [MC - 190, FL], R: [MC + 190, FL], B: [MC + 26, BWY + 8] }; // 救援三腳架
-  const WINCH = [454, 870];                                              // 捲揚器(左腳上)
+  const WINCH = [464, 842];                                              // 捲揚器(左腳上)
   const BLOWER_X = 890;                                                  // 送風機的位置(門口旁邊)
   const FLOOR_TORCH = [430, FL - 8];                                     // 阿樹放下的手電筒
 
@@ -285,20 +285,34 @@
       G.limb(ctx, [F, [lerp(F[0], hx, 0.5), lerp(F[1], hy, 0.5)], [hx, hy + 6]], { color: '#C3CAD2', lw: 16, outline: 3.5, seed: 1400 + F[0] });
       G.rrect(ctx, F[0] - 26, F[1] - 12, 52, 12, 4, { fill: '#5C6470', lw: 3, seed: 1402 + F[0] });
     }
-    // 捲揚器:鋼索從捲筒沿著腳上到頂上的滑輪
+    // 捲揚器(固定在左腳上):鋼索從捲筒沿著腳上到頂上的滑輪,搖把在左邊
     const [wx, wy] = WINCH;
-    stroke(ctx, [[wx + 6, wy - 8], [hx - 14, hy + 26]], '#3A3D44', 4);
-    G.rrect(ctx, wx - 22, wy - 26, 44, 52, 10, { fill: '#2E3036', lw: 4, seed: 1420 });
-    G.ellipse(ctx, wx, wy, 15, 15, { fill: '#8E99A3', lw: 3, seed: 1421 });
-    const kx = wx - 30 + Math.cos(crank) * 20, ky = wy + Math.sin(crank) * 20;                          // 搖把
-    stroke(ctx, [[wx - 10, wy], [wx - 30, wy]], '#5C6470', 8); stroke(ctx, [[wx - 30, wy], [kx, ky]], '#5C6470', 8);
-    G.rrect(ctx, kx - 7, ky - 7, 14, 14, 4, { fill: RED, lw: 2.5, seed: 1422 });
+    stroke(ctx, [[wx + 10, wy - 14], [hx - 14, hy + 26]], '#3A3D44', 5);
+    G.rrect(ctx, wx - 12, wy - 52, 24, 104, 6, { fill: '#8E99A3', lw: 4, seed: 1423 });                 // 夾在腳上的座
+    G.rrect(ctx, wx - 34, wy - 38, 68, 76, 14, { fill: '#2E3036', lw: 4.5, seed: 1420 });                // 齒輪箱
+    G.ellipse(ctx, wx, wy, 25, 25, { fill: '#B8C0C8', lw: 4, seed: 1421 });                              // 捲筒(纏著鋼索)
+    for (const r of [17, 10]) { ctx.save(); ctx.strokeStyle = '#5C6470'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(wx, wy, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+    const ax = wx - 44, kx = ax + Math.cos(crank) * 24, ky = wy + Math.sin(crank) * 24;                // 搖把
+    stroke(ctx, [[wx - 26, wy], [ax, wy]], INK, 13); stroke(ctx, [[wx - 26, wy], [ax, wy]], '#8E99A3', 7);
+    stroke(ctx, [[ax, wy], [kx, ky]], INK, 13); stroke(ctx, [[ax, wy], [kx, ky]], '#8E99A3', 7);
+    G.ellipse(ctx, kx, ky, 11, 11, { fill: RED, lw: 3, seed: 1422 });
     // 頂上:頭 + 滑輪
     G.rrect(ctx, hx - 42, hy - 26, 84, 40, 10, { fill: ORANGE, lw: 4, seed: 1410 });
     G.ellipse(ctx, hx - 14, hy + 26, 16, 16, { fill: '#8E99A3', lw: 3.5, seed: 1411 });
-    return { knob: [kx, ky], pulley: [hx - 14, hy + 42] };
+    return { knob: [kx, ky], hub: [ax, wy], crank, pulley: [hx - 14, hy + 42] };
   }
   function snap(ctx, x, y, rot, s) { KIT.snapHook(ctx, x, y, rot, s); }
+  function crankTop(ctx, tri, skin) { // 顧捲揚器的人:手握著搖把(搖把畫在手臂前面,看得出來在搖)
+    const [hx, hy] = tri.hub, [kx, ky] = tri.knob;
+    stroke(ctx, [[hx, hy], [kx, ky]], INK, 13); stroke(ctx, [[hx, hy], [kx, ky]], '#8E99A3', 7);
+    G.ellipse(ctx, hx, hy, 8, 8, { fill: '#5C6470', lw: 3, seed: 525 });
+    G.ellipse(ctx, kx, ky, 18, 16, { fill: skin, lw: 4, seed: 524 });
+    // 在搖:搖把外面一圈轉動的箭頭
+    const a0 = tri.crank + 0.5, a1 = a0 + 2.2, R = 46, tip = [hx + Math.cos(a1) * R, hy + Math.sin(a1) * R], tg = a1 + Math.PI / 2;
+    const arc = []; for (let k = 0; k <= 12; k++) { const an = a0 + (a1 - a0) * k / 12; arc.push([hx + Math.cos(an) * R, hy + Math.sin(an) * R]); }
+    const head = [[tip[0] + Math.cos(tg - 2.5) * 16, tip[1] + Math.sin(tg - 2.5) * 16], tip, [tip[0] + Math.cos(tg + 2.5) * 16, tip[1] + Math.sin(tg + 2.5) * 16]];
+    for (const [col, lw] of [[INK, 11], ['#FFFFFF', 5]]) { stroke(ctx, arc, col, lw); stroke(ctx, head, col, lw); }
+  }
   function cones(ctx, t) { // 警示線:兩個交通錐 + 警示帶,圍出救援區(阿樹、師傅在線外)
     KIT.cone(ctx, 200, FL + 2, 0.8, 1450); KIT.cone(ctx, 284, FL + 2, 0.8, 1452);
     KIT.warnTape(ctx, [[196, FL - 82], [288, FL - 82]], { lw: 12 });
@@ -703,6 +717,7 @@
       const hand = clipped ? (toCrank > 0 ? [lerp(Dpt[0], tri.knob[0], toCrank), lerp(Dpt[1], tri.knob[1], toCrank)] : Dpt) : [lerp(AX + 60, Dpt[0] - 6, toHook), lerp(856, Dpt[1] + 4, toHook)];
       ao.handR = toLocal(ao, hand[0], hand[1]);
       person(ctx, ao);
+      if (clipped && toCrank >= 1) crankTop(ctx, tri, CAST.winch.skin);
       D = backPerson(ctx, d.o);
       // 救生索:滑輪 → 掛鉤
       const hk = clipped ? D : [hand[0] + 4, hand[1] - 6];
@@ -728,9 +743,10 @@
     const so = { x: -40, y: SEAT, s: SS, pose: 'sit', style: CAST.shu, seed: 400, harness: {}, eyes: 'normal', brows: 'worried', mouth: 'flat', look: 0.1, lookY: 0.9, blink: blink(t, 0.4), blush: 0.2, sweat: 0.5, headY: 4,
       handL: [-46 + tr, 36 + tr * 0.6], handR: [46 - tr * 0.8, 40 + tr * 0.5] };
     const ao = { x: AX, y: FL, s: SS, pose: 'stand', style: CAST.winch, seed: 520, harness: {}, eyes: 'normal', brows: 'determined', mouth: 'flat', look: 0.6, lookY: 0.7, blink: blink(t, 0.7), blush: 0 };
-    cam(ctx, c, () => site(ctx, t, { light: 0.9, tripod: { crank: 1.2 }, cones: true, blower: { x: BLOWER_X, u: 1, run: 1, spin: t * 28, inflate: 1 }, people: (tri) => {
+    cam(ctx, c, () => site(ctx, t, { light: 0.9, tripod: { crank: 1.2 + (t - ev.sit) * 2.2 }, cones: true, blower: { x: BLOWER_X, u: 1, run: 1, spin: t * 28, inflate: 1 }, people: (tri) => {
       ao.handR = toLocal(ao, tri.knob[0], tri.knob[1]);
       person(ctx, ao);
+      crankTop(ctx, tri, CAST.winch.skin);
       stroke(ctx, [tri.pulley, [MC, TT + 300]], '#3A3D44', 4);       // 救生索還接在下面的人身上(畫面外)
       bucket(ctx, so.x, SEAT, FL);                                   // 倒過來的水桶當椅子
       person(ctx, so);
