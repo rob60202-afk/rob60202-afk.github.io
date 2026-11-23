@@ -800,11 +800,12 @@
     ctx.restore();
   };
   // 對話框:{ text, x, y(框的中心), tail:[x,y], t0, t1, size, maxW, think }
-  KIT.bubble = (ctx, t, { text, x, y, tail = null, t0 = -Infinity, t1 = Infinity, size = 46, maxW = 640, think = false, fill: f = '#FFFFFF', color = C.ink, seed = 950 } = {}) => {
+  //   自訂內容:給 w, h, content(ctx) → 框的大小固定,content 在框的左上角座標裡畫(例如放一張勾選清單)
+  KIT.bubble = (ctx, t, { text = '', x, y, tail = null, t0 = -Infinity, t1 = Infinity, size = 46, maxW = 640, think = false, fill: f = '#FFFFFF', color = C.ink, seed = 950, w: fw, h: fh, content = null } = {}) => {
     if (t < t0 || t > t1 + 0.2) return;
     const a = t0 === -Infinity ? 1 : popIn(t, t0, 0.28), out = clamp((t - t1) / 0.2), sc = a * (1 - 0.3 * out);
-    const lines = KIT.wrap(ctx, text, size, maxW);
-    const bw = Math.max(...lines.map((l) => measure(ctx, l, size))) + size * 1.4, bh = lines.length * size * 1.3 + size * 0.9;
+    const lines = content ? [] : KIT.wrap(ctx, text, size, maxW);
+    const bw = content ? fw : Math.max(...lines.map((l) => measure(ctx, l, size))) + size * 1.4, bh = content ? fh : lines.length * size * 1.3 + size * 0.9;
     ctx.save(); ctx.globalAlpha *= 1 - out; ctx.translate(x, y); ctx.scale(sc, sc);
     if (tail) {
       const tx = (tail[0] - x) / Math.max(0.01, sc), ty = (tail[1] - y) / Math.max(0.01, sc);
@@ -813,6 +814,7 @@
     }
     if (think) { const pts = []; for (let k = 0; k < 28; k++) { const an = k / 28 * Math.PI * 2, bump = 1 + 0.06 * Math.cos(an * 9); pts.push([Math.cos(an) * (bw / 2 + 18) * bump, Math.sin(an) * (bh / 2 + 18) * bump]); } G.shape(ctx, pts, { fill: f, lw: 4.5, seed }); }
     else G.rrect(ctx, -bw / 2, -bh / 2, bw, bh, Math.min(40, bh / 2), { fill: f, lw: 4.5, seed });
+    if (content) { ctx.save(); ctx.translate(-bw / 2, -bh / 2); content(ctx); ctx.restore(); }
     const by = -((lines.length - 1) * size * 1.3) / 2 + size * 0.37;
     lines.forEach((ln, j) => label(ctx, ln, 0, by + j * size * 1.3, size, color));
     ctx.restore();
