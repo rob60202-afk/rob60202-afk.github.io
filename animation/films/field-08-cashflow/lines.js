@@ -12,11 +12,11 @@
     { row: 3, voice: NARR, text: '老闆只問了一句:' },
     { row: 3, voice: BOSS, who: 'boss', text: '錢什麼時候進來?' },
     { row: 4, voice: NARR, text: '阿樹翻開合約。完工驗收之後才請款,請款之後還要等票期。' },
-    { row: 5, voice: NARR, text: '可是材料下個月就要付錢,工班每個月都要領錢。' },
+    { row: 5, voice: NARR, text: '可是材料下個月就要付錢,工班每個月都要領錢。', display: '可是材料下個月|就要付錢,工班每個月都要領錢。' },
     { row: 6, voice: NARR, text: '錢出去的時間,比錢進來的時間,早了好幾個月。' },
     { row: 7, voice: NARR, text: '這一段空白,公司要自己先墊。墊不出來,案子做一半就停了。' },
     { row: 8, voice: NARR, text: '師傅說:' },
-    { row: 8, voice: MASTER, who: 'master', text: '很多公司不是賠錢倒的,是賺錢的時候周轉不過來倒的。', display: '很多公司不是賠錢倒的,是賺錢的時候|周轉不過來倒的。' },
+    { row: 8, voice: MASTER, who: 'master', text: '很多公司不是賠錢倒的,是賺錢的時候周轉不過來倒的。', display: '很多公司|不是賠錢倒的,是賺錢的時候|周轉不過來倒的。' },
     { row: 9, voice: NARR, text: '之後阿樹報價,多做一張表:哪個月要付多少,哪個月能收多少。' },
     { row: 10, voice: NARR, text: '賺不賺錢看利潤,活不活得下去看現金。' },
   ];

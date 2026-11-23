@@ -48,7 +48,7 @@ chime(['C5', 'E5', 'G5'], ev.done, 0.09, 0.22);
 fx.addMono(I.noiseSweep(0.35, 600, 1400, { q: 1, pink: true }), ev.wipe, 0.06);                 // 擦汗
 clank(ev.pack, 1, 0.3);
 // ---------- 3 收工具、簽完工單、下班、燈熄 ----------
-clank(ev.lid, 0.8, 0.34); fx.addMono(I.thud(110, 0.08), ev.lid, 0.4);
+clank(ev.lid + 0.22, 0.8, 0.34); fx.addMono(I.thud(110, 0.08), ev.lid + 0.22, 0.4); // 工具箱蓋上(蓋子 0.25 秒闔上)
 fx.addMono(I.paperFwip(1.0), ev.sign - 0.05, 0.25);
 fx.addMono(I.scribble(0.55), ev.scrib, 0.28);
 fx.addMono(I.pop(1.2), ev.wave, 0.2);
@@ -70,7 +70,8 @@ amb.addMono(I.noiseSweep(ev.freeze - ev.night, 120, 140, { q: 0.7, pink: true, s
   amb.addStereo(p1.L, p1.R, ev.search, 0.10); amb.addStereo(p2.L, p2.R, ev.search, 0.08); }
 // ---------- 5 值班的人拿手電筒找 ----------
 fx.addMono(I.tvClick(), ev.search + 0.2, 0.35);                                                // 手電筒開關
-for (let t = ev.search + 0.5; t < ev.stop; t += 0.52) step(t, 0.13, 0.5);
+{ const t0 = ev.search + 0.15, t1 = ev.stop - 0.1, every = 150 / (610 / (t1 - t0)); // 跟畫面的步伐一致:每 150 px 一步
+  for (let t = t0 + every * 0.5; t < t1; t += every) step(t, 0.13, 0.5); }
 for (let k = 0; k < 16; k++) fx.addMono(I.woodTick(3.4), ev.hours[0] + k * (ev.hours[1] - ev.hours[0]) / 15, 0.07); // 兩個小時
 // ---------- 6 那顆手閥還關著(定格) ----------
 fx.addMono(I.noiseSweep(0.35, 400, 1600, { q: 1.2, pink: true }), ev.spot, 0.12);

@@ -14,12 +14,13 @@
 
   // ---------- 現場配置(場景座標) ----------
   const PY = 1000, PT = 44;                        // 主管:中心高度、管徑
-  const V1X = 300;                                 // 上游手閥
-  const TEEX = 450, STUBY = 1095, OUTX = 600, V2X = 515; // 排放:三通往下 → 橫的短管(排放閥)→ 出口往下 → 軟管到水桶
-  const J1X = 700, J2X = 900;                      // 要換的那一段管:兩端的法蘭
-  const BUCKX = 628, CARTX = 985;                  // 水桶、工具推車
-  const CLK = [820, 560, 62];                      // 牆上的鐘
-  const L1 = 112, V2S = 0.55;                      // 把手長度、排放閥的大小
+  const V1X = 330, V1S = 1.2;                      // 上游手閥
+  const TEEX = 470, STUBY = 1105, OUTX = 615, V2X = 535, V2S = 0.6; // 排放:三通往下 → 橫的短管(排放閥)→ 出口往下 → 軟管到水桶
+  const J1X = 720, J2X = 890;                      // 要換的那一段管:兩端的法蘭
+  const BUCKX = 645, CARTX = 1030;                 // 水桶、工具推車
+  const CLK = [870, 640, 62];
+  const SHU_AT = 190;                              // 阿樹轉上游閥時站的位置(閥的左邊,右手搆得到把手)                      // 牆上的鐘
+  const L1 = 112;                                  // 把手長度(s = 1)
   const OPEN = 0, SHUT = -Math.PI / 2;             // 把手順著管 = 開;把手垂直管子(朝上)= 關
   const PIPE = '#5E9BD0', PIPE_OLD = '#7C93A6', PIPE_NEW = '#7DBDEB', FIT = '#4F8CC4';
 
@@ -31,9 +32,7 @@
   const person = (ctx, o) => KIT.person(ctx, { pose: 'stand', s: 1, y: GROUND, blush: 0.45, ...o });
 
   // ---------- 鏡頭:把場景裡的 (cx, cy) 放到畫面 (540, fy),放大 z 倍 ----------
-  // 背景是快取的一張 1080×1920,所以鏡頭不可以看到場景 x 0..1080 以外
-  const camX = (cx, z) => clamp(cx, 540 / z, 1080 - 540 / z);
-  const wide = (z, cx) => ({ z, cx: camX(cx, z), cy: GROUND, fy: GROUND });
+  const wide = (z, cx) => ({ z, cx, cy: GROUND, fy: GROUND });
   function view(ctx, c, fn) { ctx.save(); ctx.translate(540, c.fy); ctx.scale(c.z, c.z); ctx.translate(-c.cx, -c.cy); fn(); ctx.restore(); }
   const toScr = (c, x, y) => [540 + (x - c.cx) * c.z, c.fy + (y - c.cy) * c.z];
   function finish(ctx, warm = 'rgba(255,214,140,0.16)', floor = 0.28) {
@@ -42,10 +41,10 @@
   }
 
   // ---------- 背景 ----------
-  // 近景(放大超過 1.5 倍)不用快取,直接畫,線條才不會糊
-  const roomBg = (ctx, t, crisp = false) => KIT.bg.fab(ctx, t, { floor: GROUND, pipeY: 250, columns: [36, 1044], hangers: [300, 790], machines: [], ...(crisp ? { x0: -41 } : {}) });
-  const MACH = [[48, 180, 380], [244, 180, 380], [440, 180, 380], [636, 180, 380], [832, 180, 380]];
-  const machinesBg = (ctx, t) => KIT.bg.fab(ctx, t, { floor: GROUND, pipeY: 250, columns: [], hangers: [540], machines: MACH });
+  // 背景每一格直接畫(不用快取):鏡頭可以看到 1080 以外,放大時線條也不會糊
+  const roomBg = (ctx, t) => KIT.bg.fab(ctx, t, { floor: GROUND, pipeY: 250, x0: -420, x1: 1560, columns: [40, 1220], hangers: [300, 820, 1340], machines: [] });
+  const MACH = [[48, 180, 470], [244, 180, 470], [440, 180, 470], [636, 180, 470], [832, 180, 470]];
+  const machinesBg = (ctx, t) => KIT.bg.fab(ctx, t, { floor: GROUND, pipeY: 250, x0: -200, x1: 1280, columns: [], hangers: [540], machines: MACH });
   const wallClock = (ctx, hours, night = false) => KIT.wallClock(ctx, CLK[0], CLK[1], CLK[2], hours, { night });
 
   // ---------- 管、閥、牌子 ----------
@@ -81,7 +80,7 @@
     G.ellipse(ctx, 0, 0, 9, 9, { fill: '#5C6470', lw: 3, seed: seed + 7 });
     ctx.restore();
   }
-  const gripAt = (x, y, ang, s = 1, k = 0.72) => [x + Math.cos(ang) * L1 * k * s, y + Math.sin(ang) * L1 * k * s];
+  const gripAt = (x, y, ang, s = 1, k = 0.55) => [x + Math.cos(ang) * L1 * k * s, y + Math.sin(ang) * L1 * k * s];
   // 牌子:(x, y) = 綁線的點,牌子掛在下面。三格:姓名、時間、原因
   function valveTag(ctx, x, y, s, rot = 0, f = {}, a = 1) {
     if (a <= 0 || s <= 0) return;
@@ -95,6 +94,7 @@
     G.text(ctx, '請勿操作', 0, y0 + 55, { size: 25, fam: CJK, weight: 800, color: '#FFFFFF', align: 'center', boil: 0 });
     [['姓名', f.name], ['時間', f.time], ['原因', f.why]].forEach(([k, v], i) => {
       const yy = y0 + 104 + i * 36;
+      if (f.hi === i && f.hiA > 0) { ctx.save(); ctx.globalAlpha *= f.hiA * 0.9; ctx.fillStyle = C.hi; ctx.beginPath(); ctx.roundRect(-w / 2 + 4, yy - 26, (w - 8) * Math.min(1, f.hiA * 1.5), 36, 8); ctx.fill(); ctx.restore(); }
       G.text(ctx, k, -w / 2 + 9, yy, { size: 22, fam: CJK, weight: 800, color: '#6C5A48', boil: 0 });
       stroke(ctx, [[-6, yy + 6], [w / 2 - 9, yy + 6]], '#B8AE9A', 2.5);
       if (v) G.text(ctx, v, 25, yy - 1, { size: 24, fam: /^[0-9:]+$/.test(v) ? NUM : CJK, weight: 800, color: '#2B3A5C', align: 'center', boil: 0 });
@@ -102,15 +102,15 @@
     ctx.restore();
   }
   const swing = (t, t0, amp = 0.22) => (t < t0 ? 0 : amp * Math.exp(-(t - t0) * 2.4) * Math.sin((t - t0) * 8));
-  const TAG1 = [V1X, PY + 34], TAG2 = [V2X, STUBY + 19];   // 牌子綁的地方:閥體下面
+  const TAG1 = [V1X, PY + 33 * V1S + 1], TAG2 = [V2X, STUBY + 33 * V2S + 1]; // 牌子綁的地方:閥體下面
   const FILL1 = { name: '阿樹', time: '14:00', why: '換管' }, FILL2 = { name: '阿樹', time: '14:02', why: '換管' };
   // 管裡流動的方向箭頭(水流停了就淡掉)
   function flowArrows(ctx, t, a) {
     if (a <= 0.01) return;
-    const skip = [[V1X, 64], [TEEX, 34], [J1X, 32], [J2X, 32], [120, 34], [1000, 34]];
+    const skip = [[V1X, 80], [TEEX, 34], [J1X, 32], [J2X, 32], [140, 34], [990, 34]];
     ctx.save(); ctx.globalAlpha *= Math.min(1, a) * 0.9;
-    for (let k = -1; k < 11; k++) {
-      const x = ((k * 130 + t * 80) % 1430 + 1430) % 1430 - 120;
+    for (let k = 0; k < 17; k++) {
+      const x = ((k * 130 + t * 80) % 2210 + 2210) % 2210 - 500;
       if (skip.some(([sx, r]) => Math.abs(x - sx) < r)) continue;
       stroke(ctx, [[x - 8, PY - 11], [x + 6, PY], [x - 8, PY + 11]], '#FFFFFF', 5.5);
     }
@@ -125,18 +125,18 @@
     for (const ex of [TEEX, OUTX]) G.ellipse(ctx, ex, STUBY, 17, 17, { fill: FIT, lw: 4, seed: 716 + ex });
     G.limb(ctx, [[OUTX, STUBY + 40], [OUTX + 6, STUBY + 86], [BUCKX - 6, GROUND - 80]], { color: '#3A3D44', lw: 13, outline: 3, seed: 718 });
     bucket(ctx, BUCKX, GROUND);
-    for (const bx of [120, 1000]) bracket(ctx, bx, 720 + bx);
+    for (const bx of [140, 990]) bracket(ctx, bx, 720 + bx);
     // 主管
-    pipeH(ctx, -60, J1X, PY, PT, PIPE, 730);
+    pipeH(ctx, -500, J1X, PY, PT, PIPE, 730);
     pipeH(ctx, J1X, J2X, PY, PT, seg === 'old' ? PIPE_OLD : PIPE_NEW, 732);
     if (seg === 'old') for (const [sx, sy, r] of [[760, 994, 9], [812, 1008, 6], [858, 990, 7]]) G.ellipse(ctx, sx, sy, r * 1.4, r, { fill: 'rgba(150,95,60,0.55)', lw: 0, seed: 734 + sx }); // 舊管的鏽
-    pipeH(ctx, J2X, 1140, PY, PT, PIPE, 736);
+    pipeH(ctx, J2X, 1620, PY, PT, PIPE, 736);
     G.rrect(ctx, TEEX - 24, PY - PT / 2 - 5, 48, PT + 10, 8, { fill: FIT, lw: 4, seed: 738 }); // 三通
     flange(ctx, J1X, PY, 740); flange(ctx, J2X, PY, 760);
     if (shine > 0) for (const [sx, sy, k] of [[J1X + 60, PY - 34, 0], [(J1X + J2X) / 2, PY - 6, 1], [J2X - 50, PY + 30, 2]]) KIT.sparkle(ctx, sx, sy, 22 * clamp(shine * 3 - k * 0.4), clamp(1.6 - shine * 1.2), shine * 2 + k);
     flowArrows(ctx, t, flow);
     ballValve(ctx, V2X, STUBY, v2, { s: V2S, seed: 780 });
-    ballValve(ctx, V1X, PY, v1, { s: 1, seed: 790 });
+    ballValve(ctx, V1X, PY, v1, { s: V1S, seed: 790 });
     if (tag2) valveTag(ctx, TAG2[0], TAG2[1], tag2.s || 0.7, tag2.rot || 0, tag2.f || FILL2, tag2.a ?? 1);
     if (tag1) valveTag(ctx, TAG1[0], TAG1[1], tag1.s || 0.95, tag1.rot || 0, tag1.f || FILL1, tag1.a ?? 1);
   }
@@ -230,88 +230,111 @@
 
   // ---------- 1 阿樹要換一段管,先把上游的手閥關起來 ----------
   function sClose(ctx, t) {
-    const z = lerp(1.12, 1.24, ease.inOutCubic(clamp((t - 0.3) / 5))), c = wide(z, 440);
+    const pan = ease.inOutCubic(clamp((t - 1.35) / 1.4)), push = ease.inOutCubic(clamp((t - 3.0) / 1.9));
+    const c = wide(lerp(1.4, 1.55, push), lerp(lerp(640, 400, pan), 345, push));
     const turn = ease.inOutCubic(clamp((t - ev.close) / (ev.shut - ev.close)));
     const v1 = lerp(OPEN, SHUT, turn), flow = 1 - clamp((t - ev.shut) / 0.35);
-    const o = { x: 170, style: SHU, seed: 400, blink: blink(t, 0.2), eyes: 'normal', mouth: t > ev.shut + 0.3 ? 'smile' : 'flat', brows: t > ev.reach ? 'determined' : 'neutral',
-      look: t < ev.reach ? 0.9 : 0.65, lookY: t < ev.reach ? 0.15 : 0.35 };
-    const gp = gripAt(V1X, PY, v1), tgt = KIT.hand(o.x, GROUND, 1, 1, gp[0], gp[1]), rest = [92, -180];
-    const k = ease.inOutCubic(clamp((t - ev.reach) / 0.55)) * (1 - ease.inOutCubic(clamp((t - ev.shut - 0.45) / 0.45)));
-    if (k > 0) o.handR = [lerp(rest[0], tgt[0], k), lerp(rest[1], tgt[1], k)];
+    const wk = clamp((t - 1.3) / 1.25), x = lerp(590, SHU_AT, ease.inOutQuad(wk)), walking = wk > 0 && wk < 1;
+    const o = { x, style: SHU, seed: 400, blink: blink(t, 0.2), pose: walking ? 'walk' : 'stand', walk: walking ? ((590 - x) / 300) % 1 : 0,
+      eyes: 'normal', mouth: t > ev.shut + 0.3 ? 'smile' : 'flat', brows: t > ev.reach ? 'determined' : 'neutral',
+      look: t < 1.3 ? 0.9 : walking ? -0.7 : 0.7, lookY: t < 1.3 ? 0.25 : walking ? 0 : 0.3 };
+    if (!walking && t > 2.5) {
+      const gp = gripAt(V1X, PY, v1, V1S), tgt = KIT.hand(x, GROUND, 1, 1, gp[0], gp[1]), rest = [92, -180];
+      const k = ease.inOutCubic(clamp((t - ev.reach) / 0.5)) * (1 - ease.inOutCubic(clamp((t - ev.shut - 0.45) / 0.45)));
+      if (k > 0) o.handR = [lerp(rest[0], tgt[0], k), lerp(rest[1], tgt[1], k)];
+    }
     view(ctx, c, () => {
       roomBg(ctx, t); wallClock(ctx, 14.0); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0);
       plant(ctx, t, { v1, flow, seg: 'old' });
       person(ctx, o);
       if (t >= ev.seg) { // 要換的那一段:紅色虛線框
-        const a = popIn(t, ev.seg, 0.3), p = 1 + 0.03 * Math.sin(t * 6);
-        ctx.save(); ctx.globalAlpha *= Math.min(1, a); ctx.translate((J1X + J2X) / 2, PY); ctx.scale(p, p);
-        ctx.strokeStyle = RED; ctx.lineWidth = 7; ctx.setLineDash([16, 11]); ctx.lineDashOffset = -t * 30; ctx.beginPath(); ctx.roundRect(-(J2X - J1X) / 2 - 34, -56, J2X - J1X + 68, 112, 22); ctx.stroke(); ctx.restore();
+        const a = popIn(t, ev.seg, 0.3) * (1 - clamp((t - 3.2) / 0.4)), p = 1 + 0.03 * Math.sin(t * 6);
+        if (a > 0) {
+          ctx.save(); ctx.globalAlpha *= Math.min(1, a); ctx.translate((J1X + J2X) / 2, PY); ctx.scale(p, p);
+          ctx.strokeStyle = RED; ctx.lineWidth = 7; ctx.setLineDash([16, 11]); ctx.lineDashOffset = -t * 30; ctx.beginPath(); ctx.roundRect(-(J2X - J1X) / 2 - 34, -58, J2X - J1X + 68, 116, 22); ctx.stroke(); ctx.restore();
+        }
       }
     });
     finish(ctx);
   }
 
-  // ---------- 2 工作很順利,不到一小時就做完了 / 3 收工具、簽完工單、下班、燈熄 ----------
+  // ---------- 2 工作很順利,不到一小時就做完了(阿樹站在管子後面鎖法蘭,換好的那一段看得清楚) ----------
+  const WORK_X = 760, BOLT = [J2X, PY + 25], WR = 0.62 * 84; // 扳手頭到握把的距離
   function sWork(ctx, t) {
-    const pull = ease.inOutCubic(clamp((t - (A[2] - 0.45)) / 0.8));
-    const c = wide(lerp(1.3, 1.12, pull), lerp(800, 600, pull));
+    const c = wide(1.45, 800);
     const hours = 14.0 + (50 / 60) * ease.inOutCubic(clamp((t - ev.hour[0]) / (ev.hour[1] - ev.hour[0])));
-    const done = t >= ev.done, shine = done ? clamp((t - ev.done) / 1.2) : 0;
-    const walking = t >= ev.walk, wu = clamp((t - ev.walk) / 1.05);
-    const x = lerp(800, 1190, wu);
-    const o = { x, style: SHU, seed: 400, blink: blink(t, 0.2), eyes: 'normal', mouth: 'flat', brows: 'determined', look: 0.5, lookY: 0.45 };
-    const H2 = (wx, wy) => KIT.hand(o.x, GROUND, 1, 1, wx, wy);
-    let wr = null, lid = t < ev.lid ? 1 : 1 - ease.outCubic(clamp((t - ev.lid) / 0.25)), board = null, penAt = null, onCart = t >= ev.wave - 0.2;
-    if (t < ev.done) { // 鎖法蘭:左手扶管、右手扳手
-      const wob = Math.sin(t * 10) * 9;
-      o.handL = H2(752, PY + 8); o.handR = H2(J2X - 6, PY - 26 + wob * 0.4);
-      wr = [J2X - 6, PY - 26 + wob * 0.4, -0.35 + wob * 0.02];
-    } else if (t < ev.pack) { // 做完:擦汗
-      o.eyes = 'happy'; o.mouth = 'smile'; o.brows = 'up'; o.look = 0; o.lookY = 0;
-      o.handR = H2(J2X - 6, PY - 26); wr = [J2X - 6, PY - 26, -0.35];
+    const shine = t >= ev.done ? clamp((t - ev.done) / 1.2) : 0;
+    const o = { x: WORK_X, style: SHU, seed: 400, blink: blink(t, 0.2), eyes: 'normal', mouth: 'flat', brows: 'determined', look: 0.55, lookY: 0.55 };
+    const H2 = (p) => KIT.hand(WORK_X, GROUND, 1, 1, p[0], p[1]);
+    const rot = t < ev.done ? 0.5 + 0.14 * Math.sin(t * 9) : 0.5;
+    let rh = [BOLT[0] - WR * Math.sin(rot), BOLT[1] + WR * Math.cos(rot)], wr = [rh[0], rh[1], rot];
+    const front = [];  // 在管子前面的手(管子畫完再補畫)
+    if (t < ev.done) { const lh = [806, PY - 12]; o.handL = H2(lh); front.push(lh); }
+    else {
+      o.eyes = 'happy'; o.mouth = 'smile'; o.brows = 'up'; o.look = 0.1; o.lookY = 0.1;
       const wp = clamp((t - ev.wipe) / 0.6);
-      if (t >= ev.wipe && wp < 1) { o.handL = [-34 + Math.sin(wp * Math.PI * 3) * 18, -466]; o.sweat = 1 - wp; }
+      if (t >= ev.wipe && wp < 1) { o.handL = [-74 + Math.sin(wp * Math.PI * 3) * 7, -436]; o.sweat = 1 - wp; } // 手背擦太陽穴,不遮臉
       else if (t < ev.wipe) o.sweat = 0.8;
-    } else if (t < A[2] - 0.15) { // 扳手收進工具箱
-      const u = ease.inOutCubic(clamp((t - ev.pack) / 0.4));
-      const hx = lerp(J2X - 6, CARTX - 40, u), hy = lerp(PY - 26, 1062, u);
-      o.handR = H2(hx, hy); o.look = 0.8; o.lookY = 0.6; o.mouth = 'smile';
-      if (u < 0.95) wr = [hx, hy, lerp(-0.35, 1.2, u)];
-    } else if (t < ev.sign - 0.3) { // 蓋上工具箱
-      o.handR = H2(CARTX - 50, 1050 + (t < ev.lid ? -20 : 0)); o.look = 0.8; o.lookY = 0.6; o.mouth = 'smile';
-    } else if (t < ev.wave - 0.2) { // 簽完工單
+    }
+    if (t >= ev.pack) { // 扳手收進工具箱
+      const u = ease.inOutCubic(clamp((t - ev.pack) / 0.42));
+      rh = [lerp(rh[0], CARTX - 58, u), lerp(rh[1], 1056, u)]; wr = u < 0.96 ? [rh[0], rh[1], lerp(rot, 1.4, u)] : null;
+      o.look = 0.8; o.lookY = 0.6;
+    }
+    o.handR = H2(rh); front.push(rh);
+    view(ctx, c, () => {
+      roomBg(ctx, t); wallClock(ctx, hours);
+      if (t >= ev.hour[0]) { // 鐘面上走過的那一段
+        const a0 = -Math.PI / 2, a1 = a0 + (hours - 14) * Math.PI * 2;
+        ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#56B870'; ctx.beginPath(); ctx.moveTo(CLK[0], CLK[1]); ctx.arc(CLK[0], CLK[1], CLK[2] * 0.82, a0, a1); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+      cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 1);
+      person(ctx, o);
+      plant(ctx, t, { v1: SHUT, v2: OPEN, flow: 0, seg: t < ev.done ? 'old' : 'new', shine }); // 拆管時排放閥開著(有洩掉)
+      if (wr) wrench(ctx, wr[0], wr[1], wr[2], 0.62);
+      front.forEach((h) => G.ellipse(ctx, h[0], h[1], 20, 20, { fill: SKIN, lw: 4, seed: 417 }));
+    });
+    if (t >= ev.done - 0.1) { // 不到一小時
+      const [cx, cy] = toScr(c, CLK[0], CLK[1]);
+      pill(ctx, '50 分鐘', cx, cy + CLK[2] * c.z + 56, 48, popIn(t, ev.done - 0.1, 0.3));
+    }
+    finish(ctx);
+  }
+
+  // ---------- 3 他收好工具,簽了完工單,下班(燈熄) ----------
+  const PACK_X = 850;
+  function sPack(ctx, t) {
+    const c = wide(1.4, 880);
+    const walking = t >= ev.walk, x = walking ? PACK_X + (t - ev.walk) * 380 : PACK_X;
+    const o = { x, style: SHU, seed: 400, blink: blink(t, 0.2), eyes: 'normal', mouth: 'smile', brows: 'neutral', look: 0.8, lookY: 0.55 };
+    const H2 = (wx, wy) => KIT.hand(x, GROUND, 1, 1, wx, wy);
+    const lid = 1 - ease.outCubic(clamp((t - ev.lid) / 0.25));
+    let carry = null, board = null, penAt = null;
+    if (t < ev.sign - 0.3) { o.handR = H2(CARTX - 40, 1050 - (t < ev.lid ? 24 * (1 - clamp((t - ev.lid + 0.3) / 0.3)) : 0)); }
+    else if (t < ev.wave - 0.15) { // 簽完工單
       board = [-26, -240]; o.handL = board; penAt = [24 + (t > ev.scrib && t < ev.scrib + 0.55 ? Math.sin(t * 40) * 10 : 0), -262];
       o.handR = penAt; o.look = -0.1; o.lookY = 0.9; o.mouth = 'flat';
-    } else if (!walking) { // 揮手
-      o.gesture = 'wave'; o.eyes = 'happy'; o.mouth = 'grin'; o.look = 0; o.lookY = 0;
-    } else { // 下班
-      o.pose = 'walk'; o.walk = ((x - 800) / 300) % 1; o.eyes = 'happy'; o.mouth = 'smile'; o.look = 0.6; o.lookY = 0;
+    } else { // 提起工具箱、揮手、下班
+      const up = ease.inOutCubic(clamp((t - (ev.wave - 0.15)) / 0.3));
+      const hp = [lerp(CARTX - 40, x + 96, up), lerp(1050, 1150, up)];
+      o.handR = H2(hp[0], hp[1]); carry = hp;
+      o.eyes = 'happy'; o.mouth = 'grin'; o.look = walking ? 0.6 : 0; o.lookY = 0;
+      if (!walking) o.handL = [-150 - 26 * Math.sin(t * 9), -440];
+      else { o.pose = 'walk'; o.walk = ((x - PACK_X) / 300) % 1; }
     }
-    const off = t >= ev.off, flick = off && t < ev.off + 0.14 ? (Math.floor((t - ev.off) * 28) % 2 ? 0.25 : 0.9) : 0.9;
+    const off = t >= ev.off, dark = off ? (t < ev.off + 0.14 ? (Math.floor((t - ev.off) * 28) % 2 ? 0.3 : 0.9) : 0.9) : 0;
     const scene = () => {
-      roomBg(ctx, t); wallClock(ctx, t < ev.night ? hours : 2.2);
-      if (t >= ev.hour[0] && t < A[2] + 0.5) { // 鐘面上走過的那一段
-        const a0 = -Math.PI / 2, a1 = a0 + (hours - 14) * Math.PI * 2;
-        ctx.save(); ctx.globalAlpha = 0.35 * (1 - clamp((t - A[2]) / 0.5)); ctx.fillStyle = '#56B870'; ctx.beginPath(); ctx.moveTo(CLK[0], CLK[1]); ctx.arc(CLK[0], CLK[1], CLK[2] * 0.82, a0, a1); ctx.closePath(); ctx.fill(); ctx.restore();
-      }
-      cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, lid);
-      if (onCart) clipboard(ctx, CARTX + 10, 1060, 1.45);
-      plant(ctx, t, { v1: SHUT, flow: 0, seg: t < ev.done ? 'old' : 'new', shine });
-      if (wu < 1) {
+      roomBg(ctx, t); wallClock(ctx, 15.0); cart(ctx, CARTX);
+      if (!carry) toolbox(ctx, CARTX, 1106, t < ev.lid ? 1 : lid);
+      plant(ctx, t, { v1: SHUT, flow: 0, seg: 'new' });
+      if (x < 1500) {
         person(ctx, o);
-        if (wr) wrench(ctx, wr[0], wr[1], wr[2], 0.62);
-        if (board) { const b = KIT.world({ ...o, y: GROUND }, board[0], board[1]); clipboard(ctx, b[0] + 4, b[1] - 28, -0.1); }
+        if (board) { const b = KIT.world({ ...o, y: GROUND }, board[0], board[1]); clipboard(ctx, b[0] + 4, b[1] - 30, -0.1); }
         if (penAt) { const p = KIT.world({ ...o, y: GROUND }, penAt[0], penAt[1]); pen(ctx, p[0] + 2, p[1] - 8, 0.5); }
+        if (carry) { const hw = KIT.world({ ...o, y: GROUND }, o.handR[0], o.handR[1]); toolbox(ctx, hw[0] + 10, hw[1] + 88, 0); G.ellipse(ctx, hw[0], hw[1], 19, 18, { fill: SKIN, lw: 3.5, seed: 419 }); }
       }
     };
-    view(ctx, c, () => {
-      if (!off) scene();
-      else night(ctx, scene, { dark: flick, lights: [{ x: V1X, y: PY - 40, r: 105, inner: 0.62, warm: false }] }); // 燈熄:只剩那顆關著的閥隱約看得到
-    });
-    if (t >= ev.hour[0] && t < A[2] - 0.15) { // 不到一小時
-      const [cx, cy] = toScr(c, CLK[0], CLK[1]);
-      pill(ctx, '50 分鐘', cx, cy + CLK[2] * c.z + 52, 46, popIn(t, ev.done - 0.1, 0.3));
-    }
+    view(ctx, c, () => { if (!off) scene(); else night(ctx, scene, { dark }); });
     if (t >= ev.sign && t < ev.wave + 0.1) formCard(ctx, t);
     finish(ctx, off ? 'rgba(120,150,255,0.05)' : undefined);
   }
@@ -343,8 +366,8 @@
     ctx.restore();
   }
   function headerPipe(ctx) { // 給設備的管:沿著上面走,一台一支往下
-    KIT.pipeRun(ctx, -40, 1120, 640, 40, PIPE, 950);
-    MACH.forEach(([x, w, h], k) => { const px = x + w * 0.32; pipeV(ctx, px, 640, GROUND - 6 - h - 2, 22, PIPE, 952 + k * 3); G.ellipse(ctx, px, 640, 16, 16, { fill: FIT, lw: 3.5, seed: 960 + k }); });
+    KIT.pipeRun(ctx, -200, 1280, 560, 40, PIPE, 950);
+    MACH.forEach(([x, w, h], k) => { const px = x + w * 0.32; pipeV(ctx, px, 560, GROUND - 6 - h - 2, 22, PIPE, 952 + k * 3); G.ellipse(ctx, px, 560, 16, 16, { fill: FIT, lw: 3.5, seed: 960 + k }); });
   }
   function beacon(ctx, t, [x, w, h], t0, k) { // 每台設備頂上的燈塔:平常綠燈,警報時紅燈旋轉
     const lx = x + w - 34, fy = GROUND - 6, ry = fy - h - 120 + 8.5, gy = fy - h - 120 + 2 * 17 + 8.5;
@@ -367,7 +390,7 @@
     ctx.restore();
   }
   function sAlarm(ctx, t) {
-    const c = wide(1.0, 540);
+    const c = wide(1.1, 530);
     view(ctx, c, () => {
       night(ctx, () => { machinesBg(ctx, t); headerPipe(ctx); }, { dark: 0.85 });
       MACH.forEach((m, k) => beacon(ctx, t, m, ev.alarms[k], k));
@@ -393,20 +416,21 @@
     ctx.restore();
   }
   function sSearch(ctx, t) {
-    const c = wide(1.12, 600);
-    const t0 = ev.search + 0.2, t1 = ev.stop - 0.1, u = clamp((t - t0) / (t1 - t0));
-    const x = lerp(1170, 590, u), moving = u > 0 && u < 1;
-    const o = { x, style: OPER, seed: 470, pose: moving ? 'walk' : 'stand', walk: moving ? ((1170 - x) / 300) % 1 : 0, eyes: t > ev.stop + 0.1 ? 'wide' : 'normal', mouth: t > ev.stop + 0.1 ? 'o' : 'flat', brows: 'worried', look: -0.7, lookY: -0.05, blink: blink(t, 0.4) };
-    o.handL = [-132, -296];
+    const c = wide(1.3, 650);
+    const t0 = ev.search + 0.15, t1 = ev.stop - 0.1, u = clamp((t - t0) / (t1 - t0));
+    const x = lerp(1270, 660, u), moving = u > 0 && u < 1;
+    const found = t > ev.stop + 0.15;
+    const o = { x, style: OPER, seed: 470, pose: moving ? 'walk' : 'stand', walk: moving ? ((1270 - x) / 300) % 1 : 0, eyes: found ? 'wide' : 'normal', mouth: found ? 'o' : 'flat', brows: 'worried', look: -0.75, lookY: found ? -0.1 : 0.05, blink: blink(t, 0.4) };
+    o.handL = [-134, -296];
     const hw = KIT.world({ ...o, y: GROUND }, o.handL[0], o.handL[1]);
     const sweep = [x - 330 + Math.sin(t * 1.3) * 60, PY - 10 + Math.sin(t * 1.9) * 70];
     const fu = ease.inOutCubic(clamp((t - ev.stop + 0.15) / 0.6));
-    const tgt = [lerp(sweep[0], V1X, fu), lerp(sweep[1], PY - 40, fu)];
+    const tgt = [lerp(sweep[0], V1X, fu), lerp(sweep[1], PY - 50, fu)];
     const ang = Math.atan2(tgt[1] - hw[1], tgt[0] - hw[0]);
-    let lens = null;
+    let lens = [hw[0], hw[1]];
     const scene = () => { roomBg(ctx, t); wallClock(ctx, 2.2); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0); plant(ctx, t, { v1: SHUT, flow: 0, seg: 'new' }); person(ctx, o); lens = flashlight(ctx, hw[0], hw[1], ang); };
     view(ctx, c, () => {
-      night(ctx, scene, { dark: 0.82, lights: [{ x: tgt[0], y: tgt[1], r: 100 }, { x: hw[0] + 20, y: hw[1] - 70, r: 120, inner: 0.5, warm: false }] });
+      night(ctx, scene, { dark: 0.82, lights: [{ x: tgt[0], y: tgt[1], r: 100 }, { x: hw[0] + 30, y: hw[1] - 80, r: 125, inner: 0.5, warm: false }] });
       haze(ctx, lens, tgt, 100);
     });
     clockCard(ctx, t);
@@ -416,18 +440,18 @@
   // ---------- 6 那顆手閥,還關著(定格;不畫有人去轉開) ----------
   function sFound(ctx, t) {
     const tt = Math.min(t, ev.freeze);
-    const c = { z: 2.3, cx: camX(V1X + 20, 2.3), cy: 990, fy: 860 };
+    const c = { z: 2.3, cx: V1X + 20, cy: 990, fy: 860 };
     const su = ease.outCubic(clamp((tt - ev.spot) / 0.7));
-    const spot = [lerp(560, V1X, su), lerp(1030, PY - 40, su)];
+    const spot = [lerp(600, V1X, su), lerp(1030, PY - 45, su)];
     view(ctx, c, () => {
-      night(ctx, () => { roomBg(ctx, tt, true); plant(ctx, tt, { v1: SHUT, flow: 0, seg: 'new' }); }, { dark: 0.88, lights: [{ x: spot[0], y: spot[1], r: 92 }] });
-      haze(ctx, [760, 1260], spot, 92, 0.8);
+      night(ctx, () => { roomBg(ctx, tt); plant(ctx, tt, { v1: SHUT, flow: 0, seg: 'new' }); }, { dark: 0.88, lights: [{ x: spot[0], y: spot[1], r: 96 }] });
+      haze(ctx, [800, 1270], spot, 96, 0.8);
     });
     if (t >= ev.freeze) { // 紅圈圈住直立的把手 = 關
-      const [px, py] = toScr(c, V1X, PY - 52), a = popIn(t, ev.freeze + 0.08, 0.25);
+      const [px, py] = toScr(c, V1X, PY - 62), a = popIn(t, ev.freeze + 0.08, 0.25);
       ctx.save(); ctx.globalAlpha *= Math.min(1, a); ctx.strokeStyle = RED; ctx.lineWidth = 9; ctx.setLineDash([20, 13]); ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.ellipse(px, py, 120, 190, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-      pill(ctx, '關', px + 205, py - 120, 76, a, { bg: RED, fg: '#FFFFFF', rot: 0.06 });
+      ctx.beginPath(); ctx.ellipse(px, py, 125, 215, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      pill(ctx, '關', px + 215, py - 150, 80, a, { bg: RED, fg: '#FFFFFF', rot: 0.06 });
     }
     finish(ctx, 'rgba(120,150,255,0.05)', 0.4);
     freezeLook(ctx, t, ev.freeze);
@@ -436,7 +460,7 @@
   // ---------- 7 隔天師傅遞給他一張空白的牌子 / 8 師傅:「你關的,寫你的名字……」 ----------
   const SX = 560, MX = 830, MEET = [695, 1012];
   function sTalk(ctx, t) {
-    const push = ease.inOutCubic(clamp((t - (A[7] - 0.55)) / 0.6));
+    const push = ease.inOutCubic(clamp((t - (ev.say[0] + 0.55)) / 0.6));
     const c = wide(lerp(1.2, 1.5, push), lerp(640, 700, push));
     const talkM = KIT.mouth(VO, t, 'master');
     // 牌子:師傅的左手 → 阿樹的右手
@@ -460,12 +484,12 @@
     if (t >= A[7] - 0.3) { // 師傅說話:右手跟著比,講到「開回去」左手指向那顆閥
       so.look = 0.75; so.lookY = 0.05; so.mouth = 'flat'; so.brows = t > ev.say[2] ? 'neutral' : 'worried';
       if (talkM) mo.handR = [112 + Math.sin(t * 5) * 10, -262 + Math.sin(t * 7.3) * 8];
-      const pt = clamp((t - (ev.say[1] - 0.1)) / 0.3) * (1 - clamp((t - (ev.say[1] + 1.5)) / 0.3));
-      if (pt > 0) { mo.handL = [lerp(mRest[0], -212, pt), lerp(mRest[1], -318, pt)]; mo.look = lerp(-0.55, -0.9, pt); }
+      const turn = clamp((t - (ev.say[1] + 0.2)) / 1.2);  // 「開回去」:右手比一個把手轉回來的動作
+      if (turn > 0 && turn < 1) { const an = -Math.PI / 2 + Math.PI / 2 * ease.inOutCubic(turn); mo.handR = [118 + Math.cos(an) * 46, -268 + Math.sin(an) * 46]; }
       if (t > ev.say[2] + 0.4 && t < ev.say[2] + 1.1) so.headY = Math.sin((t - ev.say[2] - 0.4) * Math.PI * 2 / 0.7) * 7; // 點頭
     }
     view(ctx, c, () => {
-      roomBg(ctx, t); wallClock(ctx, 8.75); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0);
+      roomBg(ctx, t); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0);
       plant(ctx, t, { v1: OPEN, flow: 1, seg: 'new' });
       person(ctx, so); person(ctx, mo);
       const owner = tagIn === 'm' ? mo : so, hh = tagIn === 'm' ? mo.handL : so.handR, hp = KIT.world({ ...owner, y: GROUND }, hh[0], hh[1]);
@@ -473,9 +497,11 @@
       G.ellipse(ctx, hp[0], hp[1], 17, 16, { fill: owner.style.skin, lw: 3.5, seed: 455 }); // 手捏著綁線
     });
     // 空白的牌子:放大給觀眾看三格
-    if (t >= ev.blank && t < A[7] - 0.2) {
-      const a = popIn(t, ev.blank, 0.35) * (1 - clamp((t - (A[7] - 0.5)) / 0.3));
-      ctx.save(); ctx.globalAlpha *= clamp(a); valveTag(ctx, 540, 238, 2.0 * Math.max(0.01, a), Math.sin(t * 1.8) * 0.02, {}); ctx.restore();
+    if (t >= ev.blank && t < ev.say[0] + 0.65) {
+      const a = popIn(t, ev.blank, 0.35) * (1 - clamp((t - (ev.say[0] + 0.35)) / 0.3));
+      const hp = KIT.world({ x: SX, y: GROUND, s: 1 }, so.handR[0], so.handR[1]), [hx, hy] = toScr(c, hp[0], hp[1] + 40);
+      ctx.save(); ctx.globalAlpha *= clamp(a); ctx.setLineDash([12, 10]); stroke(ctx, [[hx + 6, hy - 30], [600, 650]], '#FFFFFF', 8); stroke(ctx, [[hx + 6, hy - 30], [600, 650]], INK, 3); ctx.restore();
+      ctx.save(); ctx.globalAlpha *= clamp(a); valveTag(ctx, 540, 238, 2.0 * Math.max(0.01, a), Math.sin(t * 1.8) * 0.02, { hi: 0, hiA: clamp((t - ev.say[0] + 0.1) / 0.3) }); ctx.restore();
     }
     // 師傅的三句話:三張小卡
     const cards = [['寫名字', 'pen'], ['開回去', 'valve'], ['自己收', 'tag']];
@@ -543,78 +569,82 @@
   }
   // 近景:兩顆閥(上游閥關著、排放閥打開)各掛一張牌;排放閥先關回去
   function sTags(ctx, t) {
-    const c = { z: 1.8, cx: 440, cy: 1100, fy: 1000 };
+    const c = { z: 1.8, cx: 450, cy: 1100, fy: 1000 };
     const shut2 = ease.inOutCubic(clamp((t - ev.drainShut) / 0.42)), v2 = lerp(OPEN, SHUT, shut2);
     const hang1 = t >= ev.tag1, hang2 = t >= ev.tag2;
     view(ctx, c, () => {
-      roomBg(ctx, t, true);
+      roomBg(ctx, t);
       plant(ctx, t, { v1: SHUT, v2, flow: 0, seg: 'new',
         tag1: hang1 ? { s: 0.95, rot: swing(t, ev.tag1) } : null,
         tag2: hang2 ? { s: 0.7, rot: swing(t, ev.tag2) } : null });
-      // 阿樹的手:掛牌、把排放閥關回去
-      const handPath = (t0, to, inDur = 0.5, outDur = 0.45) => {
+      // 阿樹的手:掛牌、再把排放閥關回去
+      const handK = (t0, inDur = 0.5, outDur = 0.45) => {
         const kin = ease.inOutCubic(clamp((t - (t0 - inDur)) / inDur)), kout = ease.inOutCubic(clamp((t - t0 - 0.06) / outDur));
         return kin > 0 && kout < 1 ? kin * (1 - kout) : 0;
       };
-      const k1 = handPath(ev.tag1, TAG1), k2 = handPath(ev.tag2, TAG2);
-      if (k1 > 0) { const p = [lerp(170, TAG1[0], k1), lerp(1640, TAG1[1] + 6, k1)]; if (!hang1) valveTag(ctx, p[0], p[1] - 6, 0.95, 0.08); arm(ctx, [120, 1700], p); }
-      if (k2 > 0) { const p = [lerp(420, TAG2[0], k2), lerp(1660, TAG2[1] + 6, k2)]; if (!hang2) valveTag(ctx, p[0], p[1] - 6, 0.7, 0.08, FILL2); arm(ctx, [430, 1720], p); }
-      if (t >= ev.drainShut - 0.35 && t < ev.drainShut + 0.9) {
-        const kin = ease.inOutCubic(clamp((t - (ev.drainShut - 0.35)) / 0.35)), kout = ease.inOutCubic(clamp((t - (ev.drainShut + 0.48)) / 0.4));
-        const gp = gripAt(V2X, STUBY, v2, V2S), k = kin * (1 - kout);
-        if (k > 0.01) arm(ctx, [560, 1720], [lerp(560, gp[0], k), lerp(1640, gp[1], k)]);
+      const k1 = handK(ev.tag1), k2 = handK(ev.tag2);
+      // 手從畫面左邊(阿樹站在上游那一側)、右下伸進來
+      if (k1 > 0) { const p = [lerp(60, TAG1[0], k1), lerp(1250, TAG1[1] + 4, k1)]; if (!hang1) valveTag(ctx, p[0], p[1] - 4, 0.95, 0.08, FILL1); arm(ctx, [40, 1280], p); }
+      if (k2 > 0) { const p = [lerp(840, TAG2[0], k2), lerp(1330, TAG2[1] + 4, k2)]; if (!hang2) valveTag(ctx, p[0], p[1] - 4, 0.7, 0.08, FILL2); arm(ctx, [860, 1350], p); }
+      if (t >= ev.drainShut - 0.35 && t < ev.drainShut + 0.95) {
+        const kin = ease.inOutCubic(clamp((t - (ev.drainShut - 0.35)) / 0.35)), kout = ease.inOutCubic(clamp((t - (ev.drainShut + 0.5)) / 0.42));
+        const gp = gripAt(V2X, STUBY, v2, V2S, 0.7), k = kin * (1 - kout);
+        if (k > 0.01) arm(ctx, [860, 1300], [lerp(840, gp[0], k), lerp(1290, gp[1], k)]);
       }
     });
+    if (t >= ev.drainShut - 0.1 && t < ev.restore + 0.8) { // 先把排放閥關回去
+      const [vx, vy] = toScr(c, V2X, STUBY);
+      pill(ctx, '排放閥關回去', vx + 10, vy - 300, 46, popIn(t, ev.drainShut - 0.1, 0.25), { rot: -0.02 });
+    }
     recordTable(ctx, t);
     finish(ctx);
   }
-  // 中景:開閥前看一眼接頭 → 慢慢開、師傅看著接頭 → 最後收牌、打勾
+  // 中景:開閥前看一眼接頭 → 慢慢開、師傅在管子後面看著接頭 → 最後才收牌、打勾
+  const MASTER_W = (J1X + J2X) / 2; // 師傅站在管子後面、新管段的中間,兩個接頭都看得到
   function sRestore(ctx, t) {
-    const c = wide(1.06, 540);
+    const c = wide(1.05, 575);
     const ou = clamp((t - ev.open[0]) / (ev.open[1] - ev.open[0])), v1 = lerp(SHUT, OPEN, ease.inOutQuad(ou));
     const looking = t >= ev.look - 0.1;
     // 收牌:兩張牌飛到阿樹的左手
-    const sx = 170, handL = [-96, -196], hl = KIT.world({ x: sx, y: GROUND, s: 1 }, handL[0], handL[1]);
+    const sx = SHU_AT, handL = [-98, -196], hl = KIT.world({ x: sx, y: GROUND, s: 1 }, handL[0], handL[1]);
     const fly = (t0, from) => { const u = ease.inOutCubic(clamp((t - t0) / 0.38)); return { u, p: [lerp(from[0], hl[0], u), lerp(from[1], hl[1], u) - Math.sin(u * Math.PI) * 90] }; };
     const f1 = fly(ev.collect, TAG1), f2 = fly(ev.collect + 0.16, TAG2);
     const o = { x: sx, style: SHU, seed: 400, blink: blink(t, 0.2), eyes: 'normal', mouth: 'flat', brows: 'determined', look: looking ? 0.95 : 0.6, lookY: looking ? 0.3 : 0.2 };
-    const gp = gripAt(V1X, PY, v1), onV = KIT.hand(sx, GROUND, 1, 1, gp[0], gp[1]);
-    const letGo = ease.inOutCubic(clamp((t - (ev.open[1] + 0.1)) / 0.3));
-    o.handR = [lerp(onV[0], 92, letGo), lerp(onV[1], -180, letGo)];
-    if (t >= ev.open[0] - 0.3 && t < ev.open[1]) { o.look = 0.85; o.lookY = 0.35; }
+    const gp = gripAt(V1X, PY, v1, V1S), onV = KIT.hand(sx, GROUND, 1, 1, gp[0], gp[1]);
+    const grab = ease.inOutCubic(clamp((t - (ev.open[0] - 0.45)) / 0.4)), letGo = ease.inOutCubic(clamp((t - (ev.open[1] + 0.1)) / 0.3));
+    const k = grab * (1 - letGo);
+    if (k > 0) o.handR = [lerp(92, onV[0], k), lerp(-180, onV[1], k)];
+    if (t >= ev.open[0] - 0.3 && t < ev.open[1]) { o.look = 0.75; o.lookY = 0.3; }
     if (t >= ev.collect - 0.2) { o.handL = handL; o.look = -0.4; o.lookY = 0.5; o.mouth = 'smile'; }
     if (t >= ev.ticks[0]) { o.eyes = 'happy'; o.mouth = 'smile'; o.look = 0.2; o.lookY = -0.3; }
-    const mo = { x: 840, style: MASTER, seed: 440, blink: 0, eyes: 'normal', mouth: 'flat', brows: 'neutral', look: -0.85, lookY: 0.55, gesture: 'akimbo' };
-    if (t >= ev.ticks[0]) { mo.gesture = 'thumbsUp'; mo.look = -0.5; mo.lookY = -0.1; mo.mouth = 'smile'; mo.eyes = 'happy'; mo.blink = blink(t, 0.6); }
+    const mo = { x: MASTER_W, style: MASTER, seed: 440, blink: 0, eyes: 'normal', mouth: 'flat', brows: 'neutral', look: 0, lookY: 0.85, gesture: 'akimbo' };
+    if (t >= ev.collect) { mo.look = -0.6; mo.lookY = 0.2; mo.blink = blink(t, 0.6); }
+    if (t >= ev.ticks[0]) { mo.gesture = 'thumbsUp'; mo.look = -0.6; mo.lookY = 0; mo.mouth = 'smile'; mo.eyes = 'happy'; }
     view(ctx, c, () => {
-      roomBg(ctx, t); wallClock(ctx, 15.0); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0);
+      roomBg(ctx, t); cart(ctx, CARTX); toolbox(ctx, CARTX, 1106, 0);
+      person(ctx, mo); // 師傅在管子後面
       plant(ctx, t, { v1, v2: SHUT, flow: ou, seg: 'new',
         tag1: f1.u <= 0 ? { s: 0.95, rot: Math.sin(t * 2.1) * 0.03 } : null, tag2: f2.u <= 0 ? { s: 0.7, rot: Math.sin(t * 2.3 + 1) * 0.03 } : null });
-      person(ctx, mo);
       person(ctx, o);
       if (f1.u > 0) valveTag(ctx, f1.p[0], f1.p[1], lerp(0.95, 0.45, f1.u), lerp(0, -0.3, f1.u), FILL1);
       if (f2.u > 0) valveTag(ctx, f2.p[0] + 8 * f2.u, f2.p[1], lerp(0.7, 0.45, f2.u), lerp(0, -0.15, f2.u), FILL2);
       if (f1.u > 0) G.ellipse(ctx, hl[0], hl[1], 19, 18, { fill: SKIN, lw: 3.5, seed: 418 });
-      // 師傅看著接頭:虛線視線
-      if (t >= ev.look - 0.1 && t < ev.collect) {
-        const eye = KIT.world({ x: 840, y: GROUND, s: 1 }, -16, -410), a = clamp((t - ev.look + 0.1) / 0.3) * (1 - clamp((t - ev.collect + 0.3) / 0.3));
-        ctx.save(); ctx.globalAlpha *= a; ctx.setLineDash([10, 12]); ctx.lineDashOffset = -t * 40; stroke(ctx, [eye, [J1X + 26, PY - 30]], '#FFFFFF', 7); stroke(ctx, [eye, [J1X + 26, PY - 30]], INK, 3); ctx.restore();
-      }
     });
-    // 看一眼接頭
-    const [jx, jy] = toScr(c, J1X, PY), la = popIn(t, ev.look, 0.28) * (1 - clamp((t - ev.collect + 0.2) / 0.25));
-    if (la > 0) {
-      ctx.save(); ctx.globalAlpha *= Math.min(1, la); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 12; ctx.beginPath(); ctx.arc(jx, jy, 64, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = INK; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(jx, jy, 64, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-      KIT.tick(ctx, jx + 56, jy - 56, 26, popIn(t, ev.look + 0.35, 0.25), { seed: 905 });
-      pill(ctx, '看接頭', jx - 20, jy - 140, 46, Math.min(1, la), { rot: -0.03 });
-    }
+    // 開閥前看一眼接頭(換過的那一段,兩頭的法蘭都看)
+    [[J1X, 0], [J2X, 0.25]].forEach(([x, d], k) => {
+      const [jx, jy] = toScr(c, x, PY), la = popIn(t, ev.look + d, 0.28) * (1 - clamp((t - ev.collect + 0.2) / 0.25));
+      if (la <= 0) return;
+      ctx.save(); ctx.globalAlpha *= Math.min(1, la); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 12; ctx.beginPath(); ctx.arc(jx, jy, 54, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = INK; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(jx, jy, 54, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      KIT.tick(ctx, jx + (k ? 40 : -40), jy + 56, 24, popIn(t, ev.look + d + 0.3, 0.25), { seed: 905 + k });
+    });
+    { const la = popIn(t, ev.look, 0.28) * (1 - clamp((t - ev.collect + 0.2) / 0.25)); if (la > 0) pill(ctx, '看接頭', 590, 790, 46, Math.min(1, la), { rot: -0.03 }); }
     // 慢慢開
     const [vx, vy] = toScr(c, V1X, PY), sa = popIn(t, ev.open[0], 0.28) * (1 - clamp((t - ev.open[1] - 0.3) / 0.25));
     if (sa > 0) {
-      pill(ctx, '慢慢開', vx + 40, vy - 220, 50, Math.min(1, sa), { rot: 0.03 });
+      pill(ctx, '慢慢開', vx + 70, vy - 250, 52, Math.min(1, sa), { rot: 0.03 });
       ctx.save(); ctx.globalAlpha *= Math.min(1, sa); ctx.strokeStyle = GREEN; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.setLineDash([2, 16]);
-      ctx.beginPath(); ctx.arc(vx, vy, L1 * c.z * 1.08, -Math.PI / 2, -Math.PI / 2 + Math.PI / 2 * ou); ctx.stroke(); ctx.restore();
+      ctx.beginPath(); ctx.arc(vx, vy, L1 * V1S * c.z * 1.1, -Math.PI / 2, -Math.PI / 2 + Math.PI / 2 * ou); ctx.stroke(); ctx.restore();
     }
     recordTable(ctx, t);
     finish(ctx);
@@ -647,6 +677,7 @@
   const film = Shots.film([
     { at: 0, draw: sClose },
     { at: ev.work, draw: sWork, in: 'cut' },
+    { at: A[2] - 0.15, draw: sPack, in: 'cut' },
     { at: ev.night, draw: sAlarm, in: 'cut' },
     { at: ev.search, draw: sSearch, in: 'cut' },
     { at: ev.spot, draw: sFound, in: 'cut' },
@@ -685,7 +716,8 @@
     async init() { VO = await Studio.loadJSON('out/voice.json'); SUBS = buildSubs(VO); },
     draw(ctx, t) {
       film(ctx, t);
-      if (t < A[9] - 0.1) Subs.draw(ctx, t, SUBS, { style: 'pop', size: 74, fam: CJK, highlight: '#FFD75E' });
+      // 結尾卡不疊字幕;紙張轉場蓋滿畫面的那一下也不畫(字幕不浮在轉場上)
+      if (t < A[9] - 0.1 && !(t > ev.from - 0.25 && t < ev.from + 0.1)) Subs.draw(ctx, t, SUBS, { style: 'pop', size: 74, fam: CJK, highlight: '#FFD75E' });
     },
   });
 })();

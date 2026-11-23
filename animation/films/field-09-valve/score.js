@@ -96,7 +96,7 @@
     Bb: { notes: ['D4', 'F4', 'Bb4'], bass: 'Bb1' }, C: { notes: ['E4', 'G4', 'C5'], bass: 'C2' },
   }, Array.from({ length: BARS }, (_, b) => [b, 0, 4, ['F', 'Dm', 'Bb', 'C'][b % 4]]));
   const markers = {
-    seg: ev.seg, reach: ev.reach, shut: { t: ev.shut, sync: 'a' }, work: ev.work, done: ev.done, pack: ev.pack, lid: ev.lid, sign: ev.sign,
+    seg: ev.seg, reach: ev.reach, shut: ev.shut, work: ev.work, done: ev.done, pack: ev.pack, lid: ev.lid, sign: ev.sign,
     wave: ev.wave, off: { t: ev.off, sync: 'av' }, night: ev.night, alarm1: ev.alarms[0], alarm5: ev.alarms[4], search: ev.search, stop: ev.stop,
     spot: ev.spot, freeze: { t: ev.freeze, sync: 'av' }, day: ev.day, give: ev.give, take: ev.take, blank: ev.blank, speak: ev.speak,
     say1: ev.say[0], say2: ev.say[1], say3: ev.say[2], from: ev.from, tag1: ev.tag1, tag2: ev.tag2, table: ev.table, row2: ev.rows[1],
