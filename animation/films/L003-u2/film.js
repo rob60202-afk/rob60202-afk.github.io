@@ -5,7 +5,7 @@
 (function () {
   const U = globalThis.U, G = globalThis.G, Shots = globalThis.Shots, S = globalThis.SCORE, Studio = globalThis.Studio, KIT = globalThis.KIT;
   const { clamp, lerp, ease } = U;
-  const { A, E, ev, when } = S;
+  const { E, ev } = S;
   const { W, H, C, CAST } = KIT;
   const { label, popIn, blink, stroke, fill, lin } = KIT;
   let VO = null, CAPS = [];
@@ -22,7 +22,6 @@
     const x = lerp(x0, x1, (t - t0) / (t1 - t0));
     return { x, pose: 'walk', walk: (Math.abs(x - x0) / (300 * s)) % 1 };
   }
-  const withTimes = (rows, tm) => rows.map((r) => ({ ...r, ...(tm[r.key] || {}) }));
   // 一張平面圖(小)(L003-u1)
   function planMini(ctx, x, y, s, rot, flat = 1, seed = 70) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s * flat);
@@ -67,7 +66,7 @@
     });
   }
   // 新管要走的位置:藍色虛線(u = 畫出來的進度)
-  function plannedRoute(ctx, t, u, z = 1) {
+  function plannedRoute(ctx, t, u) {
     if (u <= 0) return;
     const x0 = -900, x1 = W + 900, xe = lerp(x0, x1, u);
     ctx.save(); ctx.globalAlpha *= 0.35 + 0.15 * Math.sin(t * 5); stroke(ctx, [[x0, PIPE_Y], [xe, PIPE_Y]], '#9FD0FF', 34); ctx.restore();
@@ -78,7 +77,7 @@
   // st: { tilt 0..1 歪掉, fall: { t0, x, y } 掉下去 }
   function crownOn(ctx, o, t, { tilt = 0, fall = null } = {}) {
     const s = o.s || 1, hp = KIT.headPos(o), k = 0.46 * s;
-    const top = hp[1] - (120 + (o.headY ? 0 : 0)) * s;
+    const top = hp[1] - 120 * s;                        // 安全帽頂(頭的座標 -120)
     let x = hp[0] + 4 * s + lerp(0, 40 * s, tilt), y = top - 10 * k + lerp(0, 16 * s, tilt), rot = lerp(-0.08, 0.62, tilt);
     if (tilt > 0 && tilt < 1) rot += Math.sin(tilt * Math.PI * 3) * 0.18 * (1 - tilt);
     if (fall && t >= fall.t0) { // 從帽子滑下來,掉到地上彈兩下
@@ -133,7 +132,7 @@
     ctx.restore();
   }
   // 從安全帽上方往上看的視線(o = 角色;grow 0..1;top = 視線要到的 y)
-  const gazeUpFrom = (ctx, o, t, grow, top, a = 1) => { if (grow <= 0) return; const hp = KIT.headPos(o), s = o.s || 1, y0 = hp[1] - 150 * s; gaze(ctx, [hp[0] + 4 * s, y0], [hp[0] + 4 * s, lerp(y0, top, grow)], t, a, 7 / Math.max(0.5, s < 1 ? 1 : 1)); };
+  const gazeUpFrom = (ctx, o, t, grow, top, a = 1) => { if (grow <= 0) return; const hp = KIT.headPos(o), s = o.s || 1, y0 = hp[1] - 150 * s; gaze(ctx, [hp[0] + 4 * s, y0], [hp[0] + 4 * s, lerp(y0, top, grow)], t, a, 7); };
 
   // ---------- 梯子、施工架(示意圖用)----------
   // 從 base(地面那一端的中心)到 top(靠牆那一端的中心)的一把梯子;w = 寬
@@ -222,7 +221,7 @@
     let so, mo;
     if (mode === 'up') { // 3. 阿樹跟著抬頭,手指往上比
       const up = t >= ev.shuUp, pu = ease.outBack(seg(t, ev.shuUp, ev.shuUp + 0.35));
-      so = { ...SHU2, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: up ? 'normal' : 'normal', mouth: mu || (up ? 'grin' : 'smile'), brows: 'up', look: up ? 0.25 : 0.7, lookY: up ? -1 : -0.2,
+      so = { ...SHU2, pose: 'stand', style: CAST.shuSite, seed: 400, eyes: 'normal', mouth: mu || (up ? 'grin' : 'smile'), brows: 'up', look: up ? 0.25 : 0.7, lookY: up ? -1 : -0.2,
         blink: blink(t, 0.2), blush: 0.55, shadow: false };
       if (pu > 0) { so.gesture = 'pointUp'; so.handR = [lerp(70, 118, pu), lerp(-212, -497, pu)]; }
       mo = { ...MST2, pose: 'stand', style: CAST.masterSite, seed: 440, eyes: 'normal', mouth: ms || 'flat', brows: 'up', look: 0.05, lookY: -1, headY: -4, blink: 0, shadow: false };
@@ -283,7 +282,7 @@
     }
     // 三個人都抬頭看(師傅問「多高?」)
     const P = people(ctx, t, { look: 'up', walk: false, crown: { tilt: ease.outCubic(seg(t, ev.crownTilt, ev.crownTilt + 0.6)) } });
-    const cpos = KIT.headPos(P.so), mh = KIT.headPos(P.mo);
+    const cpos = KIT.headPos(P.so);
     gazeUpFrom(ctx, P.mo, t, lerp(0.35, 1, ease.inOutCubic(seg(t, ev.tilt[0], ev.tilt[1] + 0.1))), PIPE_Y + 70, 1 - seg(t, ev.ruler[0] - 0.2, ev.ruler[0] + 0.2));
     ctx.restore();
     // 「6 m」:畫在畫面座標(字不跟著鏡頭縮小)
@@ -444,7 +443,7 @@
     const [c0, c1, c2] = ev.calc;
     const a = popIn(t, c0 - 0.1, 0.35);
     if (a > 0) {
-      ctx.save(); ctx.translate(1610, 330); ctx.scale(a, a); ctx.translate(-1610, -330); ctx.rotate(0.0);
+      ctx.save(); ctx.translate(1610, 330); ctx.scale(a, a); ctx.translate(-1610, -330);
       KIT.card(ctx, 1400, 300, 420, 330, { fill: C.cream, seed: 2010, tape: true });
       label(ctx, '高空作業車租金', 1610, 372, 40, C.muted);
       stroke(ctx, [[1430, 398], [1790, 398]], '#D8CDB4', 3);
@@ -459,7 +458,7 @@
 
   // ===================================== 10–11. 利潤格 =====================================
   // 一張卡片:中間一條直的數線,0 在中間;數字膠囊沿著數線往下掉,穿過 0 變成紅色
-  // G: { x, y, w, h, zero, scale(每 1,000 幾 px), title, size, value(t) → { v, text, color } }
+  // g: { x, y, w, h(卡片), zero(0 的 y), k(每 1,000 幾 px), axisX(數線的 x), title, size, pillW, pillH, value(t) → { v, text, color, flash, pop } }
   function gauge(ctx, t, g) {
     const { x, y, w, h, zero, k, size = 62, pillW = 360, pillH = 92, axisX, title = '利潤' } = g;
     KIT.card(ctx, x, y, w, h, { seed: g.seed || 2100 });
