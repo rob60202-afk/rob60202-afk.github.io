@@ -39,7 +39,8 @@
 ## 上架與頻道
 
 - [channel-kit.md](channel-kit.md):頻道名稱、簡介、播放清單、第一個月排程。
-- [upload-batch1.md](upload-batch1.md)、[upload-batch2.md](upload-batch2.md):各集標題、說明、標籤、置頂留言。
+- [upload-batch1.md](upload-batch1.md)、[upload-batch2.md](upload-batch2.md)、[upload-batch3.md](upload-batch3.md):各集標題、說明、標籤、置頂留言。
+- [upload-long-L003.md](upload-long-L003.md):長片 L003 的上架資料。
 - [subtitles/](subtitles/):各集字幕檔。
 
 ## 搭配的免費工具
